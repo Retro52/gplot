@@ -1,0 +1,1 @@
+SOURCE_LIST := SDL_evdev.c SDL_evdev_capabilities.c SDL_evdev_kbd.c SDL_threadprio.c SDL_ime.c SDL_udev.c 
