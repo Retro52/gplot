@@ -1,46 +1,44 @@
 #include <Core/DriveIO.hpp>
 #include <Graphics/Shader.hpp>
+#include <Graphics/VertexBuffer.hpp>
 
 #include <SDL.h>
 #include <SDL_main.h>
 #include <glad/glad.h>
 #include <glm/gtc/matrix_transform.hpp>
 
-std::vector<float> generate_sin_wave(int points, int start_x, float step)
-{
-    std::vector<float> res;
-    res.reserve(points * 6);
+#include <imgui/include/imgui.h>
+#include <imgui/include/imgui_impl_sdl2.h>
+#include <imgui/include/imgui_impl_opengl3.h>
 
+struct Vertex
+{
+    glm::vec2 pos { 0.0F };
+    std::uint32_t color { 0 };
+};
+
+std::vector<Vertex> generate_sin_wave(int points, int start_x, float step, int scale)
+{
+    std::vector<Vertex> res;
+    res.reserve(points);
+
+    Vertex vert;
     for (int i = 0; i < points; i++)
     {
-        res.push_back(((start_x + step * i) / 10) - 1);
-        res.push_back(glm::sin(start_x + step * i) / 2);
-        res.push_back(1.0F);
-        res.push_back(1.0F);
-        res.push_back(1.0F);
-        res.push_back(1.0F);
+        const auto x = start_x + step * i;
+
+        vert.pos.x = float(x) / scale;
+        vert.pos.y = glm::sin(x);
+        vert.color = 0xFFFFFFFF;
+
+        res.push_back(vert);
+        if (i == 0 || i == points - 1)
+        {
+            res.push_back(vert);
+        }
     }
 
     return res;
-}
-
-
-void setupSineWaveVAO(GLuint &VAO, GLuint &VBO, const std::vector<float>& vertices)
-{
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-
-    glBindVertexArray(VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * vertices.size(), vertices.data(), GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(2 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-
-    glBindVertexArray(0); // Unbind the VAO
 }
 
 int main(int argc, char* argv[])
@@ -51,12 +49,11 @@ int main(int argc, char* argv[])
     auto vert_code = io.Read("../resources/line.vert.glsl");
     auto geom_code = io.Read("../resources/line.geom.glsl");
 
-    const auto window = SDL_CreateWindow("SomeWindow", 0, 0, 400, 400, SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
-
-    SDL_GL_CreateContext(window);
+    const auto window = SDL_CreateWindow("SomeWindow", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 400, 400, SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
+    const auto context = SDL_GL_CreateContext(window);
     gladLoadGLLoader(SDL_GL_GetProcAddress);
 
-//    gplot::graphics::Shader shader("line", vert_code.data(), frag_code.data());
+    SDL_GL_MakeCurrent(window, context);
     gplot::graphics::Shader shader("line", vert_code.data(), frag_code.data(), geom_code.data());
 
     int width, height;
@@ -66,22 +63,19 @@ int main(int argc, char* argv[])
 
     shader.Use();
 
-    GLuint VAO, VBO;
-    std::vector<float> points = generate_sin_wave(1'000'000, -1, 0.0001);
+    std::vector<Vertex> points = generate_sin_wave(1'000'000, -1, 0.0005, 20);
 
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
+    gplot::graphics::VertexBuffer::GeometryBufferDescriptor descriptor;
+    descriptor.attributes =
+    {
+        { gplot::graphics::VertexBuffer::Vec2f() },
+        { gplot::graphics::VertexBuffer::UInt() },
+    };
 
-    glBindVertexArray(VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * points.size(), points.data(), GL_STATIC_DRAW);
+    constexpr size_t buff_count = 5;
 
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(2 * sizeof(float)));
-    glEnableVertexAttribArray(0);
-    glEnableVertexAttribArray(1);
-
-    glBindVertexArray(0); // Unbind the VAO
+    size_t curr_id = 0;
+    gplot::graphics::VertexBuffer lines_buffer = gplot::graphics::VertexBuffer(descriptor);
 
     SDL_GL_SetSwapInterval(0);
 
@@ -90,6 +84,7 @@ int main(int argc, char* argv[])
         SDL_Event event;
         while(SDL_PollEvent(&event))
         {
+//            ImGui_ImplSDL2_ProcessEvent(&event);
             if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE)
             {
                 return 0;
@@ -105,21 +100,51 @@ int main(int argc, char* argv[])
 
             if (event.type == SDL_EventType::SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE)
             {
-                break;
+                return 0;
             }
-
-            // Render
-            glClear(GL_COLOR_BUFFER_BIT);
-
-            shader.Use();
-
-            glBindVertexArray(VAO);
-//            glDrawArrays(GL_LINE_STRIP, 0, points.size() / 6);
-            glDrawArrays(GL_LINE_STRIP_ADJACENCY, 0, points.size() / 6);
-            glBindVertexArray(0);
-
-            SDL_GL_SwapWindow(window);
         }
+
+        glClear(GL_COLOR_BUFFER_BIT);
+
+//        ImGui_ImplOpenGL3_NewFrame();
+//        ImGui_ImplSDL2_NewFrame();
+//        ImGui::NewFrame();
+
+        // Render
+        shader.Use();
+
+        curr_id = (curr_id + 1) % buff_count;
+//        glBindVertexArray(VAO);
+        lines_buffer.Bind();
+        lines_buffer.Update(points.size() * sizeof(Vertex), points.data());
+
+        glDrawArrays(GL_LINE_STRIP_ADJACENCY, 0, points.size());
+//        glDrawArrays(GL_LINE_STRIP_ADJACENCY, 0, points.size() / 6);
+        gplot::graphics::VertexBuffer::Unbind();
+
+//        ImGui::Begin("Test");
+//
+//        static bool _check = true;
+//        ImGui::Checkbox("DrawMode", &_check);
+//        glPolygonMode(GL_FRONT, _check ? GL_FILL : GL_LINE);
+//
+//        ImGui::End();
+//        ImGui::Render();
+//        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+//
+//        // Update and Render additional Platform Windows
+//        // (Platform functions may change the current OpenGL context, so we save/restore it to make it easier to paste this code elsewhere.
+//        //  For this specific demo app we could also call SDL_GL_MakeCurrent(window, gl_context) directly)
+//        if (imio.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+//        {
+//            SDL_Window* backup_current_window = SDL_GL_GetCurrentWindow();
+//            SDL_GLContext backup_current_context = SDL_GL_GetCurrentContext();
+//            ImGui::UpdatePlatformWindows();
+//            ImGui::RenderPlatformWindowsDefault();
+//            SDL_GL_MakeCurrent(backup_current_window, backup_current_context);
+//        }
+
+        SDL_GL_SwapWindow(window);
     }
 
     return 0;
