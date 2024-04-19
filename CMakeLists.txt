@@ -9,6 +9,7 @@ set(SDL_SHARED OFF)
 
 add_subdirectory(vendors/sdl)
 add_subdirectory(vendors/glad)
+add_subdirectory(vendors/imgui)
 
 file(GLOB_RECURSE PROJECT_SOURCES src/*)
 
@@ -16,6 +17,7 @@ list(APPEND PROJECT_INCLUDES "${CMAKE_SOURCE_DIR}/src")
 list(APPEND PROJECT_INCLUDES "${CMAKE_SOURCE_DIR}/vendors")
 
 list(APPEND PROJECT_LINK_LIBS glad)
+list(APPEND PROJECT_LINK_LIBS imgui)
 list(APPEND PROJECT_LINK_LIBS SDL2::SDL2)
 list(APPEND PROJECT_LINK_LIBS SDL2::SDL2main)
 
