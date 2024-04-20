@@ -23,13 +23,14 @@ std::vector<Vertex> generate_sin_wave(int points, int start_x, float step, int s
     res.reserve(points);
 
     Vertex vert;
+    std::uint32_t color = 0x00FF00FF;
     for (int i = 0; i < points; i++)
     {
-        const auto x = start_x + step * i;
+        const auto x = step * i;
 
-        vert.pos.x = float(x) / scale;
+        vert.pos.x = start_x + (float(x) / scale);
         vert.pos.y = glm::sin(x);
-        vert.color = 0xFFFFFFFF;
+        vert.color = color;
 
         res.push_back(vert);
         if (i == 0 || i == points - 1)
@@ -63,7 +64,7 @@ int main(int argc, char* argv[])
 
     shader.Use();
 
-    std::vector<Vertex> points = generate_sin_wave(1'000'000, -1, 0.0005, 20);
+    std::vector<Vertex> points = generate_sin_wave(1'000'000, -1, 0.00005, 20);
 
     gplot::graphics::VertexBuffer::GeometryBufferDescriptor descriptor;
     descriptor.attributes =

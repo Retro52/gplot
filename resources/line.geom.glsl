@@ -5,8 +5,8 @@ layout (triangle_strip, max_vertices = 8) out;
 
 uniform float thickness = 0.01;
 
-in vec4 VertColor[];
 out vec4 GeomColor;
+in vec4 VertColor[];
 
 void main()
 {
@@ -21,31 +21,31 @@ void main()
     vec2 perpendicularNext = vec2(-directionNext.y, directionNext.x) * thickness;
 
     // Emit the vertices for the first line segment
-    GeomColor = vec4(VertColor[0].rgb, 0);
+    GeomColor = vec4(VertColor[2].rgb, 0);
     gl_Position = vec4(p1 + perpendicularPrev, 0.0, 1.0);
     EmitVertex();
-    GeomColor = vec4(VertColor[0].rgb, 0);
+    GeomColor = vec4(VertColor[2].rgb, 0);
     gl_Position = vec4(p1 - perpendicularPrev, 0.0, 1.0);
     EmitVertex();
 
-    GeomColor = vec4(VertColor[0].rgb, 0);
+    GeomColor = vec4(VertColor[2].rgb, 0);
     gl_Position = vec4(p1 + perpendicularNext, 0.0, 1.0);
     EmitVertex();
-    GeomColor = vec4(VertColor[0].rgb, 0);
+    GeomColor = vec4(VertColor[2].rgb, 0);
     gl_Position = vec4(p1 - perpendicularNext, 0.0, 1.0);
     EmitVertex();
 
-    GeomColor = vec4(VertColor[0].rgb, 0);
+    GeomColor = vec4(VertColor[2].rgb, 0);
     gl_Position = vec4(p1 + perpendicularNext, 0.0, 1.0);
     EmitVertex();
-    GeomColor = vec4(VertColor[0].rgb, 0);
+    GeomColor = vec4(VertColor[2].rgb, 0);
     gl_Position = vec4(p1 - perpendicularNext, 0.0, 1.0);
     EmitVertex();
 
-    GeomColor = vec4(VertColor[0].rgb, 0);
+    GeomColor = vec4(VertColor[2].rgb, 0);
     gl_Position = vec4(p2 + perpendicularNext, 0.0, 1.0);
     EmitVertex();
-    GeomColor = vec4(VertColor[0].rgb, 0);
+    GeomColor = vec4(VertColor[2].rgb, 0);
     gl_Position = vec4(p2 - perpendicularNext, 0.0, 1.0);
     EmitVertex();
 
