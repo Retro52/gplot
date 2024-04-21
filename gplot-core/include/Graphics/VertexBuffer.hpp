@@ -41,13 +41,20 @@ namespace gplot::graphics
 
         explicit VertexBuffer(const VertexBufferDescriptor& descriptor);
 
+        VertexBuffer(VertexBuffer&& ) = delete;
+        VertexBuffer(const VertexBuffer& ) = delete;
+        VertexBuffer& operator=(VertexBuffer&&) = delete;
+        VertexBuffer& operator=(const VertexBuffer&) = delete;
+
         ~VertexBuffer() noexcept;
 
         void Bind() const;
 
         static void Unbind();
 
-        void Update(int id, size_t size, void* data, int offset = 0) const;
+        void Resize(int id, size_t size);
+
+        void Update(int id, size_t size, const void* data, int offset = 0) const;
 
     private:
 

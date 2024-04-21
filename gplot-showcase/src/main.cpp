@@ -8,7 +8,6 @@
 #include <SDL_main.h>
 #include <glad/glad.h>
 #include <glm/gtc/type_ptr.hpp>
-#include <glm/gtc/matrix_transform.hpp>
 
 #include <imgui/include/imgui.h>
 #include <imgui/include/imgui_impl_sdl2.h>
@@ -37,7 +36,26 @@ std::uint32_t VecToInt32(glm::vec4 color)
     return res;
 }
 
-std::vector<Vertex> generate_sin_wave(int points, int start_x, float step, int scale)
+std::vector<Vertex> generate_sin_wave(int points, int start_x, float step, int x_scale, int y_scale)
+{
+    std::vector<Vertex> res;
+    res.reserve(points);
+
+    Vertex vert;
+    for (int i = 0; i < points; i++)
+    {
+        const auto x = step * i;
+
+        vert.pos.x = start_x + (float(x) / x_scale);
+        vert.pos.y = glm::sin(x) / y_scale;
+
+        res.push_back(vert);
+    }
+
+    return res;
+}
+
+std::vector<Vertex> generate_cos_wave(int points, int start_x, float step, int scale, float y_offset)
 {
     std::vector<Vertex> res;
     res.reserve(points);
@@ -48,27 +66,70 @@ std::vector<Vertex> generate_sin_wave(int points, int start_x, float step, int s
         const auto x = step * i;
 
         vert.pos.x = start_x + (float(x) / scale);
-        vert.pos.y = glm::sin(x);
+        vert.pos.y = glm::cos(x);
 
         res.push_back(vert);
-        if (i == 0 || i == points - 1)
-        {
-            res.push_back(vert);
-        }
     }
 
     return res;
 }
 
-void generate_color_buffer(const size_t points, const glm::vec4 colors, std::vector<Color>& buff)
+std::vector<Color> generate_color_buffer(const size_t points, const glm::vec4 colors)
 {
+    std::vector<Color> buff;
     auto icol = VecToInt32(colors);
 
-    if (buff.size() < points)
-    {
-        buff.resize(points);
-    }
+    buff.resize(points);
     std::fill_n(buff.begin(), points, Color { icol });
+
+    return buff;
+}
+
+#include <chrono>
+
+void DrawLines(const std::vector<std::vector<Vertex>>& lines, const std::vector<glm::vec4>& colors, gplot::graphics::VertexBuffer& buffer)
+{
+    auto start = std::chrono::high_resolution_clock::now();
+    static std::vector<Color> col_cache;
+    static std::vector<Vertex> vert_cache;
+
+    col_cache.clear();
+    vert_cache.clear();
+
+    std::vector<GLint> firsts;
+    std::vector<GLsizei> sizes;
+
+    size_t total_size = 0;
+    for (const auto& line : lines)
+    {
+        firsts.push_back(total_size);
+        sizes.push_back(line.size());
+
+        total_size += line.size();
+    }
+
+//    col_cache.resize(total_size);
+//    vert_cache.resize(total_size);
+
+    for (int i = 0; i < firsts.size(); i++)
+    {
+        auto colorvec = generate_color_buffer(lines[i].size(), colors[i]);
+        col_cache.insert(col_cache.end(), colorvec.begin(), colorvec.end());
+        vert_cache.insert(vert_cache.end(), lines[i].begin(), lines[i].end());
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+
+    std::cerr << std::chrono::duration_cast<std::chrono::microseconds>(end-start).count() << "\n";
+
+    buffer.Bind();
+    buffer.Resize(1, sizeof(Color) * total_size);
+    buffer.Resize(0, sizeof(Vertex) * total_size);
+
+    buffer.Update(0, sizeof(Vertex) * vert_cache.size(), vert_cache.data());
+    buffer.Update(1, sizeof(Color) * col_cache.size(), col_cache.data());
+
+    glMultiDrawArrays(GL_LINE_STRIP_ADJACENCY, firsts.data(), sizes.data(), lines.size());
 }
 
 int main(int argc, char* argv[])
@@ -116,14 +177,11 @@ int main(int argc, char* argv[])
 
     glViewport(0, 0, width, height);
     gplot::graphics::FBO framebuffer;
-    gplot::graphics::Texture* canvas = new gplot::graphics::Texture({width, height});
+    auto* canvas = new gplot::graphics::Texture({width, height});
+
     framebuffer.SetTexture(canvas->GetTextureId());
 
-    std::vector<Vertex> points = generate_sin_wave(1'000'000, -1, 0.00005, 20);
-
-    std::vector<Color> colors;
     glm::vec4 color { 1.0F, 0.0F, 0.0F, 1.0F };
-    generate_color_buffer(points.size(), color, colors);
 
     gplot::graphics::VertexBuffer::GeometryBufferDescriptor vb_descriptor;
 
@@ -144,7 +202,13 @@ int main(int argc, char* argv[])
     gplot::graphics::VertexBuffer lines_buffer = gplot::graphics::VertexBuffer(vao_descriptor);
 
     SDL_GL_SetSwapInterval(0);
-    bool is_data_dirty = true;
+    constexpr auto lines_count = 10;
+//    constexpr auto lines_count = 10'000;
+    std::vector<std::vector<Vertex>> lines(lines_count);
+    for (int i = 0; i < lines_count; i++)
+    {
+        lines[i] = generate_sin_wave(100'000, -1, 1.0F, 20, float(i * 10) / lines_count);
+    }
 
     while (true)
     {
@@ -183,16 +247,7 @@ int main(int argc, char* argv[])
         glClear(GL_COLOR_BUFFER_BIT);
         // Render
         shader.Use();
-
-        lines_buffer.Bind();
-        if (is_data_dirty)
-        {
-            is_data_dirty = false;
-            lines_buffer.Update(0, points.size() * sizeof(Vertex), points.data());
-            lines_buffer.Update(1, colors.size() * sizeof(Color), colors.data());
-        }
-
-        glDrawArrays(GL_LINE_STRIP_ADJACENCY, 0, points.size());
+        DrawLines(lines, std::vector<glm::vec4>(lines.size(), color), lines_buffer);
 
         gplot::graphics::FBO::Reset();
         gplot::graphics::VertexBuffer::Unbind();
@@ -202,11 +257,8 @@ int main(int argc, char* argv[])
         static bool _check = true;
         ImGui::Checkbox("DrawMode", &_check);
         glPolygonMode(GL_FRONT, _check ? GL_FILL : GL_LINE);
-        if (ImGui::ColorPicker4("Line color", glm::value_ptr(color)))
-        {
-            is_data_dirty = true;
-            generate_color_buffer(points.size(), color, colors);
-        }
+
+        ImGui::ColorPicker4("Line color", glm::value_ptr(color));
 
         static int pts = 1'000'000;
         static float step = 0.00005;
@@ -218,18 +270,19 @@ int main(int argc, char* argv[])
         update |= ImGui::DragFloat("Hor step", &step, 0.00001, 0.0000001F, 1.0F, "%.7f");
         if (update)
         {
-            is_data_dirty = true;
-            points = generate_sin_wave(pts, -1, step, hor_scale);
+//            lines[0] = generate_sin_wave(pts, -1, step, hor_scale);
+//            lines[1] = generate_cos_wave(pts, -1, step, hor_scale);
         }
 
         ImGui::End();
 
         ImGui::Begin("Viewport");
-        ImGui::Image((ImTextureID)canvas->GetTextureId(), ImVec2(canvas->GetSize().x, canvas->GetSize().y));
+        ImGui::Image((ImTextureID)canvas->GetTextureId(), ImVec2(canvas->GetSize().x, canvas->GetSize().y), ImVec2(0, 1), ImVec2(1, 0));
         ImGui::End();
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
 
         // Update and Render additional Platform Windows
         // (Platform functions may change the current OpenGL context, so we save/restore it to make it easier to paste this code elsewhere.

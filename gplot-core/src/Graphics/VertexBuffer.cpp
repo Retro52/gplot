@@ -127,14 +127,14 @@ void VertexBuffer::Unbind()
     glBindVertexArray(0);
 }
 
-void VertexBuffer::Update(int id, size_t size, void* data, int offset) const
+void VertexBuffer::Resize(int id, size_t size)
 {
-    Bind();
     glBindBuffer(GL_ARRAY_BUFFER, m_VBO[id]);
+    glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(size), nullptr, GL_DYNAMIC_DRAW);
+}
 
-    if (offset == 0)
-    {
-        glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(size), nullptr, GL_DYNAMIC_DRAW);
-    }
+void VertexBuffer::Update(int id, size_t size, const void* data, int offset) const
+{
+    glBindBuffer(GL_ARRAY_BUFFER, m_VBO[id]);
     glBufferSubData(GL_ARRAY_BUFFER, offset, static_cast<GLsizeiptr>(size), data);
 }
