@@ -52,7 +52,11 @@ namespace gplot::graphics
 
         static void Unbind();
 
-        void Resize(int id, size_t size);
+        void UnmapBuffer(int id) const;
+
+        void* MapBuffer(int id, size_t offset, size_t length, GLbitfield flags) const;
+
+        void Resize(int id, size_t size) const;
 
         void Update(int id, size_t size, const void* data, int offset = 0) const;
 

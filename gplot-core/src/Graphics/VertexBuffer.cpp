@@ -127,7 +127,19 @@ void VertexBuffer::Unbind()
     glBindVertexArray(0);
 }
 
-void VertexBuffer::Resize(int id, size_t size)
+void VertexBuffer::UnmapBuffer(int id) const
+{
+    glBindBuffer(GL_ARRAY_BUFFER, m_VBO[id]);
+    glUnmapBuffer(GL_ARRAY_BUFFER);
+}
+
+void* VertexBuffer::MapBuffer(int id, size_t offset, size_t length, GLbitfield flags) const
+{
+    glBindBuffer(GL_ARRAY_BUFFER, m_VBO[id]);
+    return glMapBufferRange(GL_ARRAY_BUFFER, offset, length, flags);
+}
+
+void VertexBuffer::Resize(int id, size_t size) const
 {
     glBindBuffer(GL_ARRAY_BUFFER, m_VBO[id]);
     glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(size), nullptr, GL_DYNAMIC_DRAW);
