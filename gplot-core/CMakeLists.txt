@@ -1,0 +1,18 @@
+cmake_minimum_required(VERSION 3.26)
+
+project(gplot-core)
+
+set(CMAKE_CXX_STANDARD 20)
+
+list(APPEND PROJECT_LINK_LIBS glad)
+
+list(APPEND PROJECT_INCLUDES "${PROJECT_SOURCE_DIR}/include")
+list(APPEND PROJECT_INCLUDES "${CMAKE_SOURCE_DIR}/vendors")
+
+file(GLOB_RECURSE PROJECT_SOURCES "${PROJECT_SOURCE_DIR}/src/*")
+
+add_library(${PROJECT_NAME} STATIC ${PROJECT_SOURCES})
+add_library(gplot::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
+
+target_link_libraries(${PROJECT_NAME} PUBLIC ${PROJECT_LINK_LIBS})
+target_include_directories(${PROJECT_NAME} PUBLIC ${PROJECT_INCLUDES})
