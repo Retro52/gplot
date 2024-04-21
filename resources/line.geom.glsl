@@ -3,7 +3,7 @@
 layout (lines_adjacency) in;
 layout (triangle_strip, max_vertices = 8) out;
 
-uniform float thickness = 0.001;
+uniform float thickness = 0.01;
 
 out vec4 GeomColor;
 in vec4 VertColor[];

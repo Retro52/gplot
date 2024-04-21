@@ -89,8 +89,6 @@ std::vector<Color> generate_color_buffer(const size_t points, const glm::vec4 co
 
 void DrawLines(const std::vector<std::vector<Vertex>>& lines, const std::vector<glm::vec4>& colors, gplot::graphics::VertexBuffer& buffer)
 {
-    auto start = std::chrono::high_resolution_clock::now();
-
     std::vector<GLint> firsts;
     std::vector<GLsizei> sizes;
 
@@ -121,9 +119,6 @@ void DrawLines(const std::vector<std::vector<Vertex>>& lines, const std::vector<
 
     buffer.UnmapBuffer(0);
     buffer.UnmapBuffer(1);
-
-    auto end = std::chrono::high_resolution_clock::now();
-    std::cerr << std::chrono::duration_cast<std::chrono::microseconds>(end-start).count() << "\n";
 
     glMultiDrawArrays(GL_LINE_STRIP_ADJACENCY, firsts.data(), sizes.data(), lines.size());
 }
@@ -198,13 +193,13 @@ int main(int argc, char* argv[])
     gplot::graphics::VertexBuffer lines_buffer = gplot::graphics::VertexBuffer(vao_descriptor);
 
     SDL_GL_SetSwapInterval(0);
-//    constexpr auto lines_count = 10;
-    constexpr auto lines_count = 10'000;
+    constexpr auto lines_count = 10;
+//    constexpr auto lines_count = 10'000;
     std::vector<std::vector<Vertex>> lines(lines_count);
     for (int i = 0; i < lines_count; i++)
     {
-        lines[i] = generate_sin_wave(100, -1, 1.0F, 20, float(i * 10) / lines_count);
-//        lines[i] = generate_sin_wave(100'000, -1, 1.0F, 20, float(i * 10) / lines_count);
+//        lines[i] = generate_sin_wave(100, -1, 1.0F, 20, float(i * 10) / lines_count);
+        lines[i] = generate_sin_wave(100'000, -1, 0.02F, 20, float(i * 10) / lines_count);
     }
 
     while (true)

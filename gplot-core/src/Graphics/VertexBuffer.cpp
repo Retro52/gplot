@@ -1,4 +1,5 @@
 #include <Graphics/VertexBuffer.hpp>
+#include <cstdint>
 
 using namespace gplot::graphics;
 
