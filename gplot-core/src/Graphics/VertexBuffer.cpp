@@ -134,12 +134,6 @@ void VertexBuffer::UnmapBuffer(int id) const
     glUnmapBuffer(GL_ARRAY_BUFFER);
 }
 
-void* VertexBuffer::MapBuffer(int id, size_t offset, size_t length, GLbitfield flags) const
-{
-    glBindBuffer(GL_ARRAY_BUFFER, m_VBO[id]);
-    return glMapBufferRange(GL_ARRAY_BUFFER, offset, length, flags);
-}
-
 void VertexBuffer::Resize(int id, size_t size) const
 {
     glBindBuffer(GL_ARRAY_BUFFER, m_VBO[id]);
@@ -150,4 +144,10 @@ void VertexBuffer::Update(int id, size_t size, const void* data, int offset) con
 {
     glBindBuffer(GL_ARRAY_BUFFER, m_VBO[id]);
     glBufferSubData(GL_ARRAY_BUFFER, offset, static_cast<GLsizeiptr>(size), data);
+}
+
+void* VertexBuffer::MapBufferInternal(int id, size_t offset, size_t length, GLbitfield flags) const
+{
+    glBindBuffer(GL_ARRAY_BUFFER, m_VBO[id]);
+    return glMapBufferRange(GL_ARRAY_BUFFER, offset, length, flags);
 }

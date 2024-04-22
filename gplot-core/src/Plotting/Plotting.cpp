@@ -21,93 +21,75 @@ namespace
 
 Plotter::Plotter()
     : m_buffer(CreateVertexBuffer())
-    , m_shader(LoadShader())
+    , m_grid_buffer(CreateVertexBuffer())
+    , m_shader(LoadLineShader())
+    , m_grid_shader(LoadGridShader())
 {
 
 }
 
-#include <format>
-#include <chrono>
-#include <iostream>
-void Plotter::PlotLines(const std::vector<std::vector<Vertex>>& lines, const std::vector<glm::vec4>& colors, CameraViewport space, float line_thickness)
+void Plotter::PlotLines(const std::vector<std::vector<gplot::core::Vertex>>& lines, const std::vector<glm::vec4>& colors, core::RectF bounds, CameraViewport camera, float line_thickness)
 {
-    m_viewport = space;
+    glm::mat4 view_matrix = glm::ortho(camera.center.x - camera.proportions.x / 2,
+                                       camera.center.x + camera.proportions.x / 2,
+                                       camera.center.y - camera.proportions.y / 2,
+                                       camera.center.y + camera.proportions.y / 2);
 
-    std::vector<GLint> firsts;
-    std::vector<GLsizei> sizes;
-
-#if 0
-    glm::vec2 min = glm::vec2(std::numeric_limits<float>::max());
-    glm::vec2 max = glm::vec2(std::numeric_limits<float>::lowest());
-
-    auto start = std::chrono::high_resolution_clock::now();
-    for (const auto& line : lines)
-    {
-        for (const auto& point : line)
-        {
-            min.x = std::min(min.x, point.pos.x);
-            min.y = std::min(min.y, point.pos.y);
-            max.x = std::max(max.x, point.pos.x);
-            max.y = std::max(max.y, point.pos.y);
-        }
-    }
-    auto end = std::chrono::high_resolution_clock::now();
-    std::cout << std::format("\rExecution time: {} | {}, {} | {}, {}", std::chrono::duration_cast<std::chrono::microseconds>(end-start).count(), min.x, min.y, max.x, max.y);
-#endif
-
-    size_t total_size = 0;
-    for (const auto& line : lines)
-    {
-        if (line.empty())
-        {
-            continue;
-        }
-
-        firsts.push_back(total_size);
-        sizes.push_back(line.size());
-
-        total_size += line.size();
-    }
-
-    if (!total_size)
-    {
-        return;
-    }
-
-    m_buffer.Bind();
-    m_buffer.Resize(1, sizeof(Color) * total_size);
-    m_buffer.Resize(0, sizeof(Vertex) * total_size);
-
-    auto* colors_ptr = static_cast<Color*>(m_buffer.MapBuffer(1, 0, sizeof(Color) * total_size, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT));
-    auto* vertex_ptr = static_cast<Vertex*>(m_buffer.MapBuffer(0, 0, sizeof(Vertex) * total_size, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT));
-
-    for (int i = 0; i < firsts.size(); i++)
-    {
-        std::copy(lines[i].begin(), lines[i].end(), vertex_ptr);
-        std::fill(colors_ptr, colors_ptr + lines[i].size(), Color {VecToInt32(colors[i]) });
-
-        colors_ptr += lines[i].size();
-        vertex_ptr += lines[i].size();
-    }
-
-    glm::mat4 view_matrix = glm::ortho(m_viewport.center.x - m_viewport.proportions.x / 2,
-                                       m_viewport.center.x + m_viewport.proportions.x / 2,
-                                       m_viewport.center.y - m_viewport.proportions.y / 2,
-                                       m_viewport.center.y + m_viewport.proportions.y / 2);
+    m_grid_shader.Use();
+    m_grid_shader.Set("uViewMatrix", view_matrix);
+    RenderGrid(bounds, 10, 10);
 
     m_shader.Use();
-//    m_shader.Set("uPosShift", position_shift);
     m_shader.Set("uViewMatrix", view_matrix);
     m_shader.Set("uLineThickness", line_thickness);
 
-    m_buffer.UnmapBuffer(0);
-    m_buffer.UnmapBuffer(1);
-
-    glMultiDrawArrays(GL_LINE_STRIP_ADJACENCY, firsts.data(), sizes.data(), lines.size());
-    gplot::graphics::VertexBuffer::Unbind();
+    PlotLinesInternal(lines, colors, m_buffer);
 }
 
-gplot::graphics::Shader Plotter::LoadShader()
+void Plotter::RenderGrid(core::RectF bounds, int count_x, int count_y) const
+{
+    std::vector<std::vector<gplot::core::Vertex>> lines;
+    lines.reserve(count_x + count_y);
+
+    auto step_x = glm::abs(bounds.min.x - bounds.max.x) / static_cast<float>(count_x);
+    auto step_y = glm::abs(bounds.min.y - bounds.max.y) / static_cast<float>(count_y);
+
+    std::vector<gplot::core::Vertex> curr;
+    for (int i = 0; i < count_x + 1; i++)
+    {
+        curr.resize(4);
+        curr[0] = { glm::vec2(bounds.min.x + step_x * static_cast<float>(i), bounds.min.y) };
+        curr[1] = { glm::vec2(bounds.min.x + step_x * static_cast<float>(i), bounds.min.y) };
+        curr[2] = { glm::vec2(bounds.min.x + step_x * static_cast<float>(i), bounds.max.y) };
+        curr[3] = { glm::vec2(bounds.min.x + step_x * static_cast<float>(i), bounds.max.y) };
+        lines.push_back(curr);
+    }
+
+    for (int i = 0; i < count_y + 1; i++)
+    {
+        curr.resize(4);
+        curr[0] = { glm::vec2(bounds.min.x, bounds.min.y + step_y * static_cast<float>(i)) };
+        curr[1] = { glm::vec2(bounds.min.x, bounds.min.y + step_y * static_cast<float>(i)) };
+        curr[2] = { glm::vec2(bounds.max.x, bounds.min.y + step_y * static_cast<float>(i)) };
+        curr[3] = { glm::vec2(bounds.max.x, bounds.min.y + step_y * static_cast<float>(i)) };
+        lines.push_back(curr);
+    }
+
+    glm::vec4 color = { 0.3F, 0.3F, 0.3F, 1.0F };
+    PlotLinesInternal(lines, std::vector<glm::vec4>(lines.size(), color), m_grid_buffer);
+}
+
+gplot::graphics::Shader Plotter::LoadGridShader()
+{
+    gplot::core::DriveIO disk_io;
+
+    auto frag_code = disk_io.Read("../resources/grid.frag.glsl");
+    auto vert_code = disk_io.Read("../resources/grid.vert.glsl");
+
+    return {"line", vert_code.data(), frag_code.data()};
+}
+
+gplot::graphics::Shader Plotter::LoadLineShader()
 {
     gplot::core::DriveIO disk_io;
 
@@ -137,4 +119,51 @@ gplot::graphics::VertexBuffer Plotter::CreateVertexBuffer()
     vao_descriptor.geometry_buffers.push_back(col_descriptor);
 
     return gplot::graphics::VertexBuffer(vao_descriptor);
+}
+
+void Plotter::PlotLinesInternal(const std::vector<std::vector<gplot::core::Vertex>>& lines, const std::vector<glm::vec4>& colors, const gplot::graphics::VertexBuffer& buffer) const
+{
+    std::vector<GLint> firsts;
+    std::vector<GLsizei> sizes;
+
+    size_t total_size = 0;
+    for (const auto& line : lines)
+    {
+        if (line.empty())
+        {
+            continue;
+        }
+
+        firsts.push_back(total_size);
+        sizes.push_back(line.size());
+
+        total_size += line.size();
+    }
+
+    if (!total_size)
+    {
+        return;
+    }
+
+    buffer.Bind();
+    buffer.Resize(1, sizeof(gplot::core::Color) * total_size);
+    buffer.Resize(0, sizeof(gplot::core::Vertex) * total_size);
+
+    auto* colors_ptr = buffer.MapBuffer<gplot::core::Color>(1, 0, total_size, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
+    auto* vertex_ptr = buffer.MapBuffer<gplot::core::Vertex>(0, 0, total_size, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
+
+    for (int i = 0; i < firsts.size(); i++)
+    {
+        std::copy(lines[i].begin(), lines[i].end(), vertex_ptr);
+        std::fill(colors_ptr, colors_ptr + lines[i].size(), gplot::core::Color {VecToInt32(colors[i]) });
+
+        colors_ptr += lines[i].size();
+        vertex_ptr += lines[i].size();
+    }
+
+    buffer.UnmapBuffer(0);
+    buffer.UnmapBuffer(1);
+
+    glMultiDrawArrays(GL_LINE_STRIP_ADJACENCY, firsts.data(), sizes.data(), lines.size());
+    gplot::graphics::VertexBuffer::Unbind();
 }

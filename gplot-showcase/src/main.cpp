@@ -15,16 +15,11 @@
 #include <memory>
 #include <numeric>
 
-struct RectF
-{
-    glm::vec2 min { std::numeric_limits<float>::max() };
-    glm::vec2 max { std::numeric_limits<float>::lowest() };
-};
 
 struct PointsData
 {
-    RectF bounds;
-    std::vector<gplot::Plotter::Vertex> vertices;
+    gplot::core::RectF bounds;
+    std::vector<gplot::core::Vertex> vertices;
 };
 
 PointsData generate_sin_wave(int points, float start_x, float start_y, float step, int x_scale, int y_scale)
@@ -37,7 +32,7 @@ PointsData generate_sin_wave(int points, float start_x, float start_y, float ste
     PointsData res;
     res.vertices.reserve(points);
 
-    gplot::Plotter::Vertex vert;
+    gplot::core::Vertex vert;
     for (int i = 0; i < points; i++)
     {
         const auto x = step * i;
@@ -111,9 +106,9 @@ int main(int argc, char* argv[])
 
     gplot::Plotter plotter;
 
-    std::vector<std::vector<gplot::Plotter::Vertex>> lines(lines_count);
+    std::vector<std::vector<gplot::core::Vertex>> lines(lines_count);
 
-    RectF rect;
+    gplot::core::RectF rect;
     lines.resize(lines_count);
     for (int i = 0; i < lines_count; i++)
     {
@@ -126,7 +121,7 @@ int main(int argc, char* argv[])
         rect.max.y = std::max(rect.max.y, data.bounds.max.y);
     }
 
-    gplot::Plotter::CameraViewport viewport, backup;
+    gplot::CameraViewport viewport, backup;
     viewport.proportions.x = glm::abs(rect.min.x - rect.max.x);
     viewport.proportions.y = glm::abs(rect.min.y - rect.max.y);
     viewport.center.x = glm::abs(rect.min.x - rect.max.x) / 2;
@@ -138,6 +133,7 @@ int main(int argc, char* argv[])
     float line_thickness = 0.001F;
     glm::vec2 last_mouse_pos(0);
 
+    glDisable(GL_DEPTH_TEST);
     while (true)
     {
         SDL_Event event;
@@ -208,7 +204,7 @@ int main(int argc, char* argv[])
         framebuffer.Bind();
         glClear(GL_COLOR_BUFFER_BIT);
 
-        plotter.PlotLines(lines, std::vector<glm::vec4>(lines.size(), color), viewport, line_thickness);
+        plotter.PlotLines(lines, std::vector<glm::vec4>(lines.size(), color), rect, viewport, line_thickness);
 
         gplot::graphics::FBO::Reset();
 

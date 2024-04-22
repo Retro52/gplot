@@ -4,7 +4,7 @@ layout (location = 0) in vec2 aPoint;
 layout (location = 1) in uint aColor;
 
 out vec4 VertColor;
-uniform mat4 uViewMatrix; // x, y -> position offset; z, w -> position scale by respective axes
+uniform mat4 uViewMatrix;
 
 void main()
 {

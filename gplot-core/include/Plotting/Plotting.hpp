@@ -2,6 +2,7 @@
 
 #include <Graphics/Shader.hpp>
 #include <Graphics/VertexBuffer.hpp>
+#include <Plotting/PlottingTypes.hpp>
 
 namespace gplot
 {
@@ -9,57 +10,31 @@ namespace gplot
     {
     public:
 
-        struct Vertex
-        {
-            glm::vec2 pos { 0.0F };
-        };
-
-        struct Color
-        {
-            std::uint32_t color { 0 };
-        };
-
-        struct PointSpace
-        {
-            glm::vec2 min;
-            glm::vec2 max;
-        };
-
-        struct CameraViewport
-        {
-            glm::vec2 center { 0, 0 };
-            glm::vec2 proportions { 2, 2 };
-
-            void PanView(glm::vec2 delta)
-            {
-                center += delta;
-            }
-
-            void AdjustZoom(float factor)
-            {
-                proportions /= factor;
-            }
-        };
-
-    public:
-
         explicit Plotter();
 
-        void PlotLines(const std::vector<std::vector<Vertex>>& lines, const std::vector<glm::vec4>& colors, CameraViewport space, float line_thickness = 0.05F);
+        void PlotLines(const std::vector<std::vector<gplot::core::Vertex>>& lines, const std::vector<glm::vec4>& colors, core::RectF bounds, CameraViewport camera, float line_thickness = 0.05F);
 
     private:
 
-        static gplot::graphics::Shader LoadShader();
+        void RenderGrid(core::RectF bounds, int count_x, int count_y) const;
+
+        static gplot::graphics::Shader LoadGridShader();
+
+        static gplot::graphics::Shader LoadLineShader();
 
         static gplot::graphics::VertexBuffer CreateVertexBuffer();
 
-    private:
+        void PlotLinesInternal(const std::vector<std::vector<gplot::core::Vertex>>& lines, const std::vector<glm::vec4>& colors, const gplot::graphics::VertexBuffer& buffer) const;
 
-        CameraViewport m_viewport;
+    private:
 
         gplot::graphics::Shader m_shader;
 
+        gplot::graphics::Shader m_grid_shader;
+
         gplot::graphics::VertexBuffer m_buffer;
+
+        gplot::graphics::VertexBuffer m_grid_buffer;
 
     };
 }
