@@ -1,8 +1,6 @@
-#include <Core/DriveIO.hpp>
 #include <Graphics/FBO.hpp>
-#include <Graphics/Shader.hpp>
 #include <Graphics/Texture.hpp>
-#include <Graphics/VertexBuffer.hpp>
+#include <Plotting/Plotting.hpp>
 
 #include <SDL.h>
 #include <SDL_main.h>
@@ -14,34 +12,32 @@
 #include <imgui/include/imgui_impl_opengl3.h>
 
 #include <iostream>
+#include <memory>
+#include <numeric>
 
-struct Vertex
+struct RectF
 {
-    glm::vec2 pos { 0.0F };
+    glm::vec2 min { std::numeric_limits<float>::max() };
+    glm::vec2 max { std::numeric_limits<float>::lowest() };
 };
 
-struct Color
+struct PointsData
 {
-    std::uint32_t color { 0 };
+    RectF bounds;
+    std::vector<gplot::Plotter::Vertex> vertices;
 };
 
-std::uint32_t VecToInt32(glm::vec4 color)
+PointsData generate_sin_wave(int points, float start_x, float start_y, float step, int x_scale, int y_scale)
 {
-    std::uint32_t res = 0;
-    res |= std::uint32_t(color.r * 255.0F) << 24;
-    res |= std::uint32_t(color.g * 255.0F) << 16;
-    res |= std::uint32_t(color.b * 255.0F) << 8;
-    res |= std::uint32_t(color.a * 255.0F) << 0;
+    if (points < 0)
+    {
+        return {};
+    }
 
-    return res;
-}
+    PointsData res;
+    res.vertices.reserve(points);
 
-std::vector<Vertex> generate_sin_wave(int points, float start_x, float start_y, float step, int x_scale, int y_scale)
-{
-    std::vector<Vertex> res;
-    res.reserve(points);
-
-    Vertex vert;
+    gplot::Plotter::Vertex vert;
     for (int i = 0; i < points; i++)
     {
         const auto x = step * i;
@@ -49,94 +45,24 @@ std::vector<Vertex> generate_sin_wave(int points, float start_x, float start_y, 
         vert.pos.x = start_x + (float(x) / x_scale);
         vert.pos.y = start_y + glm::sin(x) / y_scale;
 
-        res.push_back(vert);
+        res.bounds.min.x = std::min(res.bounds.min.x, vert.pos.x);
+        res.bounds.min.y = std::min(res.bounds.min.y, vert.pos.y);
+        res.bounds.max.x = std::max(res.bounds.max.x, vert.pos.x);
+        res.bounds.max.y = std::max(res.bounds.max.y, vert.pos.y);
+
+        res.vertices.push_back(vert);
     }
 
     return res;
-}
-
-std::vector<Vertex> generate_cos_wave(int points, int start_x, float step, int scale, float y_offset)
-{
-    std::vector<Vertex> res;
-    res.reserve(points);
-
-    Vertex vert;
-    for (int i = 0; i < points; i++)
-    {
-        const auto x = step * i;
-
-        vert.pos.x = start_x + (float(x) / scale);
-        vert.pos.y = glm::cos(x);
-
-        res.push_back(vert);
-    }
-
-    return res;
-}
-
-std::vector<Color> generate_color_buffer(const size_t points, const glm::vec4 colors)
-{
-    std::vector<Color> buff;
-    auto icol = VecToInt32(colors);
-
-    buff.resize(points);
-    std::fill_n(buff.begin(), points, Color { icol });
-
-    return buff;
-}
-
-#include <chrono>
-
-void DrawLines(const std::vector<std::vector<Vertex>>& lines, const std::vector<glm::vec4>& colors, gplot::graphics::VertexBuffer& buffer)
-{
-    std::vector<GLint> firsts;
-    std::vector<GLsizei> sizes;
-
-    size_t total_size = 0;
-    for (const auto& line : lines)
-    {
-        firsts.push_back(total_size);
-        sizes.push_back(line.size());
-
-        total_size += line.size();
-    }
-
-    buffer.Bind();
-    buffer.Resize(1, sizeof(Color) * total_size);
-    buffer.Resize(0, sizeof(Vertex) * total_size);
-
-    auto* colors_ptr = static_cast<Color*>(buffer.MapBuffer(1, 0, sizeof(Color) * total_size, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT));
-    auto* vertex_ptr = static_cast<Vertex*>(buffer.MapBuffer(0, 0, sizeof(Vertex) * total_size, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT));
-
-    for (int i = 0; i < firsts.size(); i++)
-    {
-        std::copy(lines[i].begin(), lines[i].end(), vertex_ptr);
-        std::fill(colors_ptr, colors_ptr + lines[i].size(), Color {VecToInt32(colors[i]) });
-
-        colors_ptr += lines[i].size();
-        vertex_ptr += lines[i].size();
-    }
-
-    buffer.UnmapBuffer(0);
-    buffer.UnmapBuffer(1);
-
-    glMultiDrawArrays(GL_LINE_STRIP_ADJACENCY, firsts.data(), sizes.data(), lines.size());
 }
 
 int main(int argc, char* argv[])
 {
-    gplot::core::DriveIO disk_io;
-
-    auto frag_code = disk_io.Read("../resources/line.frag.glsl");
-    auto vert_code = disk_io.Read("../resources/line.vert.glsl");
-    auto geom_code = disk_io.Read("../resources/line.geom.glsl");
-
     const auto window = SDL_CreateWindow("SomeWindow", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 400, 400, SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
     const auto context = SDL_GL_CreateContext(window);
     gladLoadGLLoader(SDL_GL_GetProcAddress);
 
     SDL_GL_MakeCurrent(window, context);
-    gplot::graphics::Shader shader("line", vert_code.data(), frag_code.data(), geom_code.data());
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -167,45 +93,50 @@ int main(int argc, char* argv[])
     SDL_GetWindowSize(window, &width, &height);
 
     glViewport(0, 0, width, height);
+
     gplot::graphics::FBO framebuffer;
-    auto* canvas = new gplot::graphics::Texture({width, height});
+    std::unique_ptr<gplot::graphics::Texture> canvas(new gplot::graphics::Texture({width, height}));
 
     framebuffer.SetTexture(canvas->GetTextureId());
 
     glm::vec4 color { 1.0F, 0.0F, 0.0F, 1.0F };
-
-    gplot::graphics::VertexBuffer::GeometryBufferDescriptor vb_descriptor;
-
-    vb_descriptor.attributes.resize(1);
-    vb_descriptor.attributes[0].is_data_normalized = false;
-    vb_descriptor.attributes[0].data_count = 2;
-    vb_descriptor.attributes[0].data = gplot::graphics::VertexBuffer::DataType_t::eFloat32;
-
-    gplot::graphics::VertexBuffer::GeometryBufferDescriptor col_descriptor;
-    col_descriptor.attributes.resize(1);
-    col_descriptor.attributes[0].data_count = 1;
-    col_descriptor.attributes[0].data = gplot::graphics::VertexBuffer::DataType_t::eUInt32;
-
-    gplot::graphics::VertexBuffer::VertexBufferDescriptor vao_descriptor;
-    vao_descriptor.geometry_buffers.push_back(vb_descriptor);
-    vao_descriptor.geometry_buffers.push_back(col_descriptor);
-
-    gplot::graphics::VertexBuffer lines_buffer = gplot::graphics::VertexBuffer(vao_descriptor);
-
     SDL_GL_SetSwapInterval(0);
 
     int pts = 100;
     float step = 0.2F;
-    int hor_scale = 20;
+    int hor_scale = 1;
     int vert_scale = 1;
     int lines_count = 10;
+    glm::vec4 pos_shift = { 0, 0, 1.0F, 1.0F };
 
-    std::vector<std::vector<Vertex>> lines(lines_count);
+    gplot::Plotter plotter;
+
+    std::vector<std::vector<gplot::Plotter::Vertex>> lines(lines_count);
+
+    RectF rect;
     lines.resize(lines_count);
     for (int i = 0; i < lines_count; i++)
     {
-        lines[i] = generate_sin_wave(pts, -1.0F, -1.0F + float(i * 10) / lines_count, step, hor_scale, vert_scale);
+        auto data = generate_sin_wave(pts, -1.0F, -1.0F + float(i * 10) / lines_count, step, hor_scale, vert_scale);
+        lines[i] = data.vertices;
+
+        rect.min.x = std::min(rect.min.x, data.bounds.min.x);
+        rect.min.y = std::min(rect.min.y, data.bounds.min.y);
+        rect.max.x = std::max(rect.max.x, data.bounds.max.x);
+        rect.max.y = std::max(rect.max.y, data.bounds.max.y);
     }
+
+    gplot::Plotter::CameraViewport viewport, backup;
+    viewport.proportions.x = glm::abs(rect.min.x - rect.max.x);
+    viewport.proportions.y = glm::abs(rect.min.y - rect.max.y);
+    viewport.center.x = glm::abs(rect.min.x - rect.max.x) / 2;
+    viewport.center.y = glm::abs(rect.min.y - rect.max.y) / 2;
+    backup = viewport;
+
+    bool dragging = false;
+    bool window_hover = false;
+    float line_thickness = 0.001F;
+    glm::vec2 last_mouse_pos(0);
 
     while (true)
     {
@@ -213,25 +144,59 @@ int main(int argc, char* argv[])
         while(SDL_PollEvent(&event))
         {
             ImGui_ImplSDL2_ProcessEvent(&event);
-            if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE)
-            {
-                return 0;
-            }
 
-            if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
-            {
-                int width, height;
-                SDL_GetWindowSize(window, &width, &height);
+            switch (event.type) {
+                case SDL_MOUSEWHEEL:
+                    if (event.wheel.y != 0 && window_hover)
+                    {
+                        float zoom_factor = (event.wheel.y > 0) ? 1.1f : 0.9f;
+                        viewport.AdjustZoom(zoom_factor);
+                    }
+                    break;
+                case SDL_MOUSEBUTTONDOWN:
+                    if (event.button.button == SDL_BUTTON_LEFT)
+                    {
+                        dragging = true;
+                        last_mouse_pos = glm::vec2(event.button.x, event.button.y);
+                    }
+                    break;
+                case SDL_MOUSEBUTTONUP:
+                    if (event.button.button == SDL_BUTTON_LEFT)
+                    {
+                        dragging = false;
+                    }
+                    break;
+                case SDL_MOUSEMOTION:
+                    if (dragging && window_hover)
+                    {
+                        glm::vec2 cur_mouse_pos(event.motion.x, event.motion.y);
+                        glm::vec2 delta = cur_mouse_pos - last_mouse_pos;
 
-                glViewport(0, 0, width, height);
-                delete canvas;
-                canvas = new gplot::graphics::Texture({width, height});
-                framebuffer.SetTexture(canvas->GetTextureId());
-            }
+                        viewport.PanView(glm::vec2(-delta.x, delta.y) * 0.01F);
+                        last_mouse_pos = cur_mouse_pos;
+                    }
+                    break;
+                case SDL_KEYUP:
+                    if (event.key.keysym.sym == SDL_KeyCode::SDLK_f)
+                    {
+                        pos_shift.x  = 0.0F;
+                        pos_shift.y  = 0.0F;
+                    }
+                    break;
+                case SDL_WINDOWEVENT:
+                    if (event.window.event == SDL_WINDOWEVENT_CLOSE)
+                    {
+                        return 0;
+                    }
+                    else if (event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
+                    {
+                        SDL_GetWindowSize(window, &width, &height);
+                        glViewport(0, 0, width, height);
 
-            if (event.type == SDL_EventType::SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE)
-            {
-                return 0;
+                        canvas = std::make_unique<gplot::graphics::Texture>(gplot::graphics::Texture::texsize(width, height));
+                        framebuffer.SetTexture(canvas->GetTextureId());
+                    }
+                    break;
             }
         }
 
@@ -242,12 +207,10 @@ int main(int argc, char* argv[])
 
         framebuffer.Bind();
         glClear(GL_COLOR_BUFFER_BIT);
-        // Render
-        shader.Use();
-        DrawLines(lines, std::vector<glm::vec4>(lines.size(), color), lines_buffer);
+
+        plotter.PlotLines(lines, std::vector<glm::vec4>(lines.size(), color), viewport, line_thickness);
 
         gplot::graphics::FBO::Reset();
-        gplot::graphics::VertexBuffer::Unbind();
 
         ImGui::Begin("Test");
 
@@ -264,18 +227,41 @@ int main(int argc, char* argv[])
         update |= ImGui::DragInt("Hor scale", &hor_scale, 1);
         update |= ImGui::DragInt("Vert scale", &vert_scale, 1);
         update |= ImGui::DragFloat("Hor step", &step, 0.00001, 0.0000001F, 1.0F, "%.7f");
-        if (update)
+        update |= ImGui::DragFloat("line_thickness", &line_thickness, 0.0001, 0.0000001F, 1.0F, "%.7f");
+        if (update && lines_count > 0)
         {
+            rect = {};
             lines.resize(lines_count);
             for (int i = 0; i < lines_count; i++)
             {
-                lines[i] = generate_sin_wave(pts, -1.0F, -1.0F + float(i * 10) / lines_count, step, hor_scale, vert_scale);
+                auto data = generate_sin_wave(pts, -1.0F, -1.0F + float(i * 10) / lines_count, step, hor_scale, vert_scale);
+                lines[i] = data.vertices;
+
+                rect.min.x = std::min(rect.min.x, data.bounds.min.x);
+                rect.min.y = std::min(rect.min.y, data.bounds.min.y);
+                rect.max.x = std::max(rect.max.x, data.bounds.max.x);
+                rect.max.y = std::max(rect.max.y, data.bounds.max.y);
             }
+
+            backup = viewport;
+            viewport = {};
+            viewport.proportions.x = rect.max.x - rect.min.x;
+            viewport.proportions.y = rect.max.y - rect.min.y;
+            viewport.proportions.x = backup.proportions.x;
+            viewport.proportions.y = backup.proportions.y;
+            viewport.center.x = (rect.max.x + rect.min.x) / 2;
+            viewport.center.y = (rect.max.y + rect.min.y) / 2;
+            backup = viewport;
         }
+        ImGui::Text("Plot bounds: min { %f, %f }, max { %f, %f }", rect.min.x, rect.min.y, rect.max.x, rect.max.y);
+        ImGui::Text("Original vp: center { %f, %f }, proportions { %f, %f }", backup.center.x, backup.center.y, backup.proportions.x, backup.proportions.y);
+        ImGui::Text("Viewport vp: center { %f, %f }, proportions { %f, %f }", viewport.center.x, viewport.center.y, viewport.proportions.x, viewport.proportions.y);
 
         ImGui::End();
 
         ImGui::Begin("Viewport");
+        dragging &= ImGui::IsWindowHovered();
+        window_hover = ImGui::IsWindowHovered();
         ImGui::Image((ImTextureID)canvas->GetTextureId(), ImVec2(canvas->GetSize().x, canvas->GetSize().y), ImVec2(0, 1), ImVec2(1, 0));
         ImGui::End();
 

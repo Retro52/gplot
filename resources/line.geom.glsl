@@ -3,7 +3,7 @@
 layout (lines_adjacency) in;
 layout (triangle_strip, max_vertices = 8) out;
 
-uniform float thickness = 0.001;
+uniform float uLineThickness = 0.001;
 
 out vec4 GeomColor;
 in vec4 VertColor[];
@@ -17,8 +17,8 @@ void main()
     vec2 directionPrev = normalize(p1 - p0);
     vec2 directionNext = normalize(p2 - p1);
 
-    vec2 perpendicularPrev = vec2(-directionPrev.y, directionPrev.x) * thickness;
-    vec2 perpendicularNext = vec2(-directionNext.y, directionNext.x) * thickness;
+    vec2 perpendicularPrev = vec2(-directionPrev.y, directionPrev.x) * uLineThickness;
+    vec2 perpendicularNext = vec2(-directionNext.y, directionNext.x) * uLineThickness;
 
     // Emit the vertices for the first line segment
     GeomColor = vec4(VertColor[2].rgb, 0);
