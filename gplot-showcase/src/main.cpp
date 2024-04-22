@@ -11,16 +11,34 @@
 #include <imgui/include/imgui_impl_sdl2.h>
 #include <imgui/include/imgui_impl_opengl3.h>
 
-#include <iostream>
 #include <memory>
+#include <random>
 #include <numeric>
-
+#include <iostream>
 
 struct PointsData
 {
     gplot::core::RectF bounds;
     std::vector<gplot::core::Vertex> vertices;
 };
+
+std::vector<glm::vec4> GenerateRandomColors(size_t N)
+{
+    // Vector to store the generated colors
+    std::vector<glm::vec4> colors;
+
+    // Random number generator using the Mersenne Twister engine
+    std::mt19937 rng(std::random_device{}());
+    std::uniform_real_distribution<float> dist(0.0f, 1.0f);
+
+    // Generate N colors
+    for (size_t i = 0; i < N; ++i) {
+        glm::vec4 color(dist(rng), dist(rng), dist(rng), dist(rng)); // RGBA values
+        colors.push_back(color);
+    }
+
+    return colors;
+}
 
 PointsData generate_sin_wave(int points, float start_x, float start_y, float step, int x_scale, int y_scale)
 {
@@ -110,6 +128,7 @@ int main(int argc, char* argv[])
 
     gplot::core::RectF rect;
     lines.resize(lines_count);
+    auto colors = GenerateRandomColors(lines.size());
     for (int i = 0; i < lines_count; i++)
     {
         auto data = generate_sin_wave(pts, -1.0F, -1.0F + float(i * 10) / lines_count, step, hor_scale, vert_scale);
@@ -204,7 +223,7 @@ int main(int argc, char* argv[])
         framebuffer.Bind();
         glClear(GL_COLOR_BUFFER_BIT);
 
-        plotter.PlotLines(lines, std::vector<glm::vec4>(lines.size(), color), rect, viewport, line_thickness);
+        plotter.PlotLines(lines, colors, rect, viewport, line_thickness);
 
         gplot::graphics::FBO::Reset();
 
@@ -228,6 +247,8 @@ int main(int argc, char* argv[])
         {
             rect = {};
             lines.resize(lines_count);
+            colors = GenerateRandomColors(lines.size());
+
             for (int i = 0; i < lines_count; i++)
             {
                 auto data = generate_sin_wave(pts, -1.0F, -1.0F + float(i * 10) / lines_count, step, hor_scale, vert_scale);
