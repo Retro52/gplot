@@ -146,10 +146,6 @@ void Shader::Set(std::string_view name, UniformType data)
            {
                glUniformMatrix4fv(gl_location, 1, GL_FALSE, glm::value_ptr(value));
            }
-           else
-           {
-               static_assert(false, "Shader::Set: Unsupported type in std::variant");
-           }
        }, data);
 
 }

@@ -36,7 +36,7 @@ std::uint32_t VecToInt32(glm::vec4 color)
     return res;
 }
 
-std::vector<Vertex> generate_sin_wave(int points, int start_x, float step, int x_scale, int y_scale)
+std::vector<Vertex> generate_sin_wave(int points, float start_x, float start_y, float step, int x_scale, int y_scale)
 {
     std::vector<Vertex> res;
     res.reserve(points);
@@ -47,7 +47,7 @@ std::vector<Vertex> generate_sin_wave(int points, int start_x, float step, int x
         const auto x = step * i;
 
         vert.pos.x = start_x + (float(x) / x_scale);
-        vert.pos.y = glm::sin(x) / y_scale;
+        vert.pos.y = start_y + glm::sin(x) / y_scale;
 
         res.push_back(vert);
     }
@@ -193,13 +193,18 @@ int main(int argc, char* argv[])
     gplot::graphics::VertexBuffer lines_buffer = gplot::graphics::VertexBuffer(vao_descriptor);
 
     SDL_GL_SetSwapInterval(0);
-    constexpr auto lines_count = 10;
-//    constexpr auto lines_count = 10'000;
+
+    int pts = 100;
+    float step = 0.2F;
+    int hor_scale = 20;
+    int vert_scale = 1;
+    int lines_count = 10;
+
     std::vector<std::vector<Vertex>> lines(lines_count);
+    lines.resize(lines_count);
     for (int i = 0; i < lines_count; i++)
     {
-//        lines[i] = generate_sin_wave(100, -1, 1.0F, 20, float(i * 10) / lines_count);
-        lines[i] = generate_sin_wave(100'000, -1, 0.02F, 20, float(i * 10) / lines_count);
+        lines[i] = generate_sin_wave(pts, -1.0F, -1.0F + float(i * 10) / lines_count, step, hor_scale, vert_scale);
     }
 
     while (true)
@@ -252,18 +257,20 @@ int main(int argc, char* argv[])
 
         ImGui::ColorPicker4("Line color", glm::value_ptr(color));
 
-        static int pts = 1'000'000;
-        static float step = 0.00005;
-        static int hor_scale = 20;
-
         bool update = false;
-        update |= ImGui::DragInt("Points", &pts, 1000);
-        update |= ImGui::DragInt("Hor scale", &hor_scale, 5);
+        ImGui::Text("Total points: %d", pts * lines_count);
+        update |= ImGui::DragInt("Points", &pts, 100);
+        update |= ImGui::DragInt("Lines", &lines_count, 1);
+        update |= ImGui::DragInt("Hor scale", &hor_scale, 1);
+        update |= ImGui::DragInt("Vert scale", &vert_scale, 1);
         update |= ImGui::DragFloat("Hor step", &step, 0.00001, 0.0000001F, 1.0F, "%.7f");
         if (update)
         {
-//            lines[0] = generate_sin_wave(pts, -1, step, hor_scale);
-//            lines[1] = generate_cos_wave(pts, -1, step, hor_scale);
+            lines.resize(lines_count);
+            for (int i = 0; i < lines_count; i++)
+            {
+                lines[i] = generate_sin_wave(pts, -1.0F, -1.0F + float(i * 10) / lines_count, step, hor_scale, vert_scale);
+            }
         }
 
         ImGui::End();
