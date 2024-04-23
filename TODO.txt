@@ -7,6 +7,7 @@ Rendering:
 4) Fix an error when first & last lines are skipped
 5) Add text rendering [Must take advantage of atlases]
 6) Add font load/reload subsystem
+7) Fix line thickness to be calculated based on pixel-size instead of magic numbers
 
 Code organization:
 1) Create math section for common types
