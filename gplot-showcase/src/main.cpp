@@ -147,12 +147,18 @@ int main(int argc, char* argv[])
     viewport.center.y = glm::abs(rect.min.y - rect.max.y) / 2;
     backup = viewport;
 
+    float zoom = 1.0F;
     bool dragging = false;
     bool window_hover = false;
     float line_thickness = 0.001F;
     glm::vec2 last_mouse_pos(0);
 
     glDisable(GL_DEPTH_TEST);
+
+    glEnable(GL_BLEND);
+    glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
+    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
     while (true)
     {
         SDL_Event event;
@@ -165,6 +171,8 @@ int main(int argc, char* argv[])
                     if (event.wheel.y != 0 && window_hover)
                     {
                         float zoom_factor = (event.wheel.y > 0) ? 1.1f : 0.9f;
+
+                        zoom *= zoom_factor;
                         viewport.AdjustZoom(zoom_factor);
                     }
                     break;
@@ -187,7 +195,7 @@ int main(int argc, char* argv[])
                         glm::vec2 cur_mouse_pos(event.motion.x, event.motion.y);
                         glm::vec2 delta = cur_mouse_pos - last_mouse_pos;
 
-                        viewport.PanView(glm::vec2(-delta.x, delta.y) * 0.01F);
+                        viewport.PanView(glm::vec2(-delta.x, delta.y) * 0.01F / zoom);
                         last_mouse_pos = cur_mouse_pos;
                     }
                     break;
