@@ -10,31 +10,29 @@ namespace
 {
     constexpr const char* CACHE_DIR = ".cache/shader";
 
-    bool CheckForErrors(GLuint id, std::string_view type)
+    bool CheckForErrors(GLuint id, std::uint64_t type)
     {
         GLint success = 0;
         GLchar info_log[1024];
-        if(type != "PROGRAM")
+
+        switch (type)
         {
-            glGetShaderiv(id, GL_COMPILE_STATUS, &success);
-            if(success == 0)
-            {
-                glGetShaderInfoLog(id, std::size(info_log), nullptr, info_log);
-                std::cerr << __FILE__ << __LINE__ << ". Failed to compile shader. Log: " << info_log << std::endl;
-                return false;
-            }
-        }
-        else
-        {
-            glGetProgramiv(id, GL_LINK_STATUS, &success);
-            if(success == 0)
-            {
-                glGetShaderInfoLog(id, std::size(info_log), nullptr, info_log);
-                std::cerr << __FILE__ << __LINE__ << ". Failed to link shader. Log: " << info_log << std::endl;
-                return false;
-            }
+            case GL_COMPILE_STATUS:
+                glGetShaderiv(id, type, &success);
+                break;
+            case GL_LINK_STATUS:
+                glGetProgramiv(id, type, &success);
+                break;
+            default:
+                break;
         }
 
+        if(success == 0)
+        {
+            glGetShaderInfoLog(id, std::size(info_log), nullptr, info_log);
+            std::cerr << __FILE__ << __LINE__ << ". Failed to link shader. Log: " << info_log << std::endl;
+            return false;
+        }
         return true;
     }
 }
@@ -53,8 +51,8 @@ Shader::Shader(std::string_view name, const char* vertex_src, const char* fragme
     glShaderSource(fragment_id, 1, &fragment_src, nullptr);
     glCompileShader(fragment_id);
 
-    success &= CheckForErrors(vertex_id, "VERTEX");
-    success &= CheckForErrors(fragment_id, "FRAGMENT");
+    success &= CheckForErrors(vertex_id, GL_COMPILE_STATUS);
+    success &= CheckForErrors(fragment_id, GL_COMPILE_STATUS);
 
     // shader Program
     m_id = glCreateProgram();
@@ -67,12 +65,12 @@ Shader::Shader(std::string_view name, const char* vertex_src, const char* fragme
         glShaderSource(geometry_id, 1, &geometry_src, nullptr);
         glCompileShader(geometry_id);
 
-        success &= CheckForErrors(geometry_id, "GEOMETRY");
+        success &= CheckForErrors(geometry_id, GL_COMPILE_STATUS);
 
         glAttachShader(m_id, geometry_id);
     }
     glLinkProgram(m_id);
-    success &= CheckForErrors(m_id, "PROGRAM");
+    success &= CheckForErrors(m_id, GL_LINK_STATUS);
 
     glDeleteShader(vertex_id);
     glDeleteShader(fragment_id);

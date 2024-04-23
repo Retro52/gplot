@@ -149,5 +149,5 @@ void VertexBuffer::Update(int id, size_t size, const void* data, int offset) con
 void* VertexBuffer::MapBufferInternal(int id, size_t offset, size_t length, GLbitfield flags) const
 {
     glBindBuffer(GL_ARRAY_BUFFER, m_VBO[id]);
-    return glMapBufferRange(GL_ARRAY_BUFFER, offset, length, flags);
+    return glMapBufferRange(GL_ARRAY_BUFFER, static_cast<GLintptr>(offset), static_cast<GLintptr>(length), flags);
 }

@@ -55,9 +55,9 @@ namespace gplot::graphics
         void UnmapBuffer(int id) const;
 
         template<typename T>
-        [[nodiscard]] T* MapBuffer(int id, size_t offset, size_t length, GLbitfield flags) const
+        [[nodiscard]] T* MapBuffer(int id, size_t offset, size_t size, GLbitfield flags) const
         {
-            return static_cast<T*>(MapBufferInternal(id, offset, length * sizeof(T), flags));
+            return static_cast<T*>(MapBufferInternal(id, offset, size * sizeof(T), flags));
         }
 
         void Resize(int id, size_t size) const;
