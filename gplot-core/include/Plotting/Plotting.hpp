@@ -12,7 +12,7 @@ namespace gplot
 
         explicit Plotter();
 
-        void PlotLines(const std::vector<std::vector<gplot::core::Vertex>>& lines, const std::vector<glm::vec4>& colors, core::RectF bounds, CameraViewport camera, float line_thickness = 0.05F);
+        void PlotLines(const std::vector<std::vector<gplot::core::Vertex>>& lines, const std::vector<glm::vec4>& colors, core::RectF bounds, CameraViewport camera, float line_thickness = 0.05F, float line_feather = 0.05F);
 
     private:
 

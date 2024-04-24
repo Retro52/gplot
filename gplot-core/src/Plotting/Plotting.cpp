@@ -28,7 +28,7 @@ Plotter::Plotter()
 
 }
 
-void Plotter::PlotLines(const std::vector<std::vector<gplot::core::Vertex>>& lines, const std::vector<glm::vec4>& colors, core::RectF bounds, CameraViewport camera, float line_thickness)
+void Plotter::PlotLines(const std::vector<std::vector<gplot::core::Vertex>>& lines, const std::vector<glm::vec4>& colors, core::RectF bounds, CameraViewport camera, float line_thickness, float line_feather)
 {
     glm::mat4 view_matrix = glm::ortho(camera.center.x - camera.proportions.x / 2,
                                        camera.center.x + camera.proportions.x / 2,
@@ -41,6 +41,8 @@ void Plotter::PlotLines(const std::vector<std::vector<gplot::core::Vertex>>& lin
 
     m_shader.Use();
     m_shader.Set("uViewMatrix", view_matrix);
+
+    m_shader.Set("uFeather", line_feather);
     m_shader.Set("uLineThickness", line_thickness);
 
     PlotLinesInternal(lines, colors, m_buffer);

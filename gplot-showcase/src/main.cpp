@@ -150,6 +150,7 @@ int main(int argc, char* argv[])
     float zoom = 1.0F;
     bool dragging = false;
     bool window_hover = false;
+    float line_feather = 0.1F;
     float line_thickness = 0.001F;
     glm::vec2 last_mouse_pos(0);
 
@@ -231,7 +232,7 @@ int main(int argc, char* argv[])
         framebuffer.Bind();
         glClear(GL_COLOR_BUFFER_BIT);
 
-        plotter.PlotLines(lines, colors, rect, viewport, line_thickness);
+        plotter.PlotLines(lines, colors, rect, viewport, line_thickness, line_feather);
 
         gplot::graphics::FBO::Reset();
 
@@ -250,6 +251,7 @@ int main(int argc, char* argv[])
         update |= ImGui::DragInt("Hor scale", &hor_scale, 1);
         update |= ImGui::DragInt("Vert scale", &vert_scale, 1);
         update |= ImGui::DragFloat("Hor step", &step, 0.00001, 0.0000001F, 1.0F, "%.7f");
+        update |= ImGui::DragFloat("line_feather", &line_feather, 0.01, 0.0000001F, 1.0F, "%.7f");
         update |= ImGui::DragFloat("line_thickness", &line_thickness, 0.0001, 0.0000001F, 1.0F, "%.7f");
         if (update && lines_count > 0)
         {
