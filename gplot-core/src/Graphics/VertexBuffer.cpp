@@ -60,6 +60,17 @@ namespace
     {
         return EnumToGlType(type) == GL_FLOAT;
     }
+
+    constexpr auto BufferTypeToGl(VertexBuffer::BufferData_t type)
+    {
+        switch (type)
+        {
+            case gplot::graphics::VertexBuffer::BufferData_t::eVertexData:
+                return GL_ARRAY_BUFFER;
+            case gplot::graphics::VertexBuffer::BufferData_t::eIndicesData:
+                return GL_ELEMENT_ARRAY_BUFFER;
+        }
+    }
 }
 
 VertexBuffer::VertexBuffer(const VertexBufferDescriptor& descriptor)
@@ -68,16 +79,25 @@ VertexBuffer::VertexBuffer(const VertexBufferDescriptor& descriptor)
     glBindVertexArray(m_VAO);
 
     uint32_t attrib_index = 0;
-    m_VBO.resize(descriptor.geometry_buffers.size());
-    for (int i = 0; i < m_VBO.size(); i++)
+    m_buffers.resize(descriptor.geometry_buffers.size());
+    for (int i = 0; i < m_buffers.size(); i++)
     {
-        auto& VBO = m_VBO[i];
         const auto& desc = descriptor.geometry_buffers[i];
 
-        glGenBuffers(1, &VBO);
-        glBindBuffer(GL_ARRAY_BUFFER, VBO);
-
-        glBufferData(GL_ARRAY_BUFFER, 1, nullptr, GL_DYNAMIC_DRAW);
+        if (desc.buffers.contains(BufferData_t::eVertexData))
+        {
+            auto& VBO = m_buffers[i].VBO;
+            glGenBuffers(1, &VBO);
+            glBindBuffer(GL_ARRAY_BUFFER, VBO);
+            glBufferData(GL_ARRAY_BUFFER, 1, nullptr, GL_DYNAMIC_DRAW);
+        }
+        if (desc.buffers.contains(BufferData_t::eIndicesData))
+        {
+            auto& EBO = m_buffers[i].EBO;
+            glGenBuffers(1, &EBO);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, 1, nullptr, GL_DYNAMIC_DRAW);
+        }
 
         GLint total_size = 0;
         for (const auto& element : desc.attributes)
@@ -110,9 +130,12 @@ VertexBuffer::VertexBuffer(const VertexBufferDescriptor& descriptor)
 
 VertexBuffer::~VertexBuffer() noexcept
 {
-    for (auto& VBO : m_VBO)
+    for (auto& buffer : m_buffers)
     {
-        glDeleteBuffers(1, &VBO);
+        if (buffer.VBO)
+            glDeleteBuffers(1, &buffer.VBO);
+        if (buffer.EBO)
+            glDeleteBuffers(1, &buffer.EBO);
     }
 
     glDeleteVertexArrays(1, &m_VAO);
@@ -128,26 +151,45 @@ void VertexBuffer::Unbind()
     glBindVertexArray(0);
 }
 
-void VertexBuffer::UnmapBuffer(int id) const
+void VertexBuffer::UnmapBuffer(int id, BufferData_t buffer) const
 {
-    glBindBuffer(GL_ARRAY_BUFFER, m_VBO[id]);
-    glUnmapBuffer(GL_ARRAY_BUFFER);
+    const auto type = BufferTypeToGl(buffer);
+
+    glBindBuffer(type, GetBufferId(id, buffer));
+    glUnmapBuffer(type);
 }
 
-void VertexBuffer::Resize(int id, size_t size) const
+GLuint VertexBuffer::GetBufferId(int id, BufferData_t buffer) const
 {
-    glBindBuffer(GL_ARRAY_BUFFER, m_VBO[id]);
-    glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(size), nullptr, GL_DYNAMIC_DRAW);
+    switch (buffer)
+    {
+        case BufferData_t::eVertexData:
+            return m_buffers[id].VBO;
+        case BufferData_t::eIndicesData:
+            return m_buffers[id].EBO;
+    }
 }
 
-void VertexBuffer::Update(int id, size_t size, const void* data, int offset) const
+void VertexBuffer::ResizeInternal(int id, BufferData_t buffer, size_t size) const
 {
-    glBindBuffer(GL_ARRAY_BUFFER, m_VBO[id]);
-    glBufferSubData(GL_ARRAY_BUFFER, offset, static_cast<GLsizeiptr>(size), data);
+    const auto type = BufferTypeToGl(buffer);
+
+    glBindBuffer(type, GetBufferId(id, buffer));
+    glBufferData(type, static_cast<GLsizeiptr>(size), nullptr, GL_DYNAMIC_DRAW);
 }
 
-void* VertexBuffer::MapBufferInternal(int id, size_t offset, size_t length, GLbitfield flags) const
+void VertexBuffer::UpdateInternal(int id, BufferData_t buffer, size_t size, const void* data, int offset) const
 {
-    glBindBuffer(GL_ARRAY_BUFFER, m_VBO[id]);
-    return glMapBufferRange(GL_ARRAY_BUFFER, static_cast<GLintptr>(offset), static_cast<GLintptr>(length), flags);
+    const auto type = BufferTypeToGl(buffer);
+
+    glBindBuffer(type, GetBufferId(id, buffer));
+    glBufferSubData(type, offset, static_cast<GLsizeiptr>(size), data);
+}
+
+void* VertexBuffer::MapBufferInternal(int id, BufferData_t buffer, size_t offset, size_t length, GLbitfield flags) const
+{
+    const auto type = BufferTypeToGl(buffer);
+
+    glBindBuffer(type, GetBufferId(id, buffer));
+    return glMapBufferRange(type, static_cast<GLintptr>(offset), static_cast<GLintptr>(length), flags);
 }

@@ -37,7 +37,7 @@ namespace
     }
 }
 
-Shader::Shader(std::string_view name, const char* vertex_src, const char* fragment_src, const char* geometry_src)
+Shader::Shader(std::string_view name, const char* vertex_src, const char* fragment_src, std::optional<const char*> geometry_src)
 {
     bool success = true;
     GLuint vertex_id, fragment_id, geometry_id;
@@ -59,10 +59,10 @@ Shader::Shader(std::string_view name, const char* vertex_src, const char* fragme
     glAttachShader(m_id, vertex_id);
     glAttachShader(m_id, fragment_id);
 
-    if(geometry_src)
+    if(geometry_src.has_value())
     {
         geometry_id = glCreateShader(GL_GEOMETRY_SHADER);
-        glShaderSource(geometry_id, 1, &geometry_src, nullptr);
+        glShaderSource(geometry_id, 1, &geometry_src.value(), nullptr);
         glCompileShader(geometry_id);
 
         success &= CheckForErrors(geometry_id, GL_COMPILE_STATUS);

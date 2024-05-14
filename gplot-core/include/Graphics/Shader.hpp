@@ -2,8 +2,9 @@
 
 #include <string_view>
 #include <unordered_map>
-
 #include <variant>
+#include <optional>
+
 #include <glm/glm.hpp>
 
 namespace gplot::graphics
@@ -17,7 +18,7 @@ namespace gplot::graphics
         Shader(Shader&& ) = delete;
         Shader(const Shader& ) = delete;
 
-        Shader(std::string_view name, const char* vertex_src, const char* fragment_src, const char* geometry_src = nullptr);
+        Shader(std::string_view name, const char* vertex_src, const char* fragment_src, std::optional<const char*> geometry_src = std::nullopt);
 
         ~Shader();
 
