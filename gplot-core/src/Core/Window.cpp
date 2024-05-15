@@ -69,7 +69,7 @@ void Window::SwapBuffers()
 void Window::Tick()
 {
     /* close window */
-    if (EventsHandler::IsJustPressed(GLFW_KEY_ESCAPE))
+    if (EventsHandler::IsJustPressed(GLFW_KEY_ESCAPE) && EventsHandler::IsPressed(GLFW_KEY_TAB))
     {
         Window::SetShouldClose(true);
     }

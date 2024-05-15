@@ -5,7 +5,7 @@ using namespace gplot::graphics;
 void Mesh::Draw()
 {
     m_buffer.Bind();
-    glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(m_count), GL_UNSIGNED_SHORT, nullptr);
+    glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(m_count), GL_UNSIGNED_INT, nullptr);
 }
 
 VertexBuffer::VertexBufferDescriptor Mesh::GetDescriptor()
@@ -22,7 +22,7 @@ VertexBuffer::VertexBufferDescriptor Mesh::GetDescriptor()
 std::vector<VertexBuffer::GeometryBufferAttributes> Mesh::GetGeometryAttributes()
 {
     std::vector<VertexBuffer::GeometryBufferAttributes> attributes;
-    attributes.resize(2);
+    attributes.resize(3);
 
     attributes[0].data_count = 3;
     attributes[0].is_data_normalized = false;
@@ -31,6 +31,10 @@ std::vector<VertexBuffer::GeometryBufferAttributes> Mesh::GetGeometryAttributes(
     attributes[1].data_count = 3;
     attributes[1].is_data_normalized = false;
     attributes[1].data = gplot::graphics::VertexBuffer::DataType_t::eFloat32;
+
+    attributes[2].data_count = 3;
+    attributes[2].is_data_normalized = false;
+    attributes[2].data = gplot::graphics::VertexBuffer::DataType_t::eFloat32;
 
     return attributes;
 }

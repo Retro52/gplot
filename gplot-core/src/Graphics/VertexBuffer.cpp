@@ -72,6 +72,8 @@ namespace
             case gplot::graphics::VertexBuffer::BufferData_t::eIndicesData:
                 return GL_ELEMENT_ARRAY_BUFFER;
         }
+
+        return 0;
     }
 }
 
@@ -170,6 +172,8 @@ unsigned int VertexBuffer::GetBufferId(int id, BufferData_t buffer) const
         case BufferData_t::eIndicesData:
             return m_buffers[id].EBO;
     }
+
+    return 0;
 }
 
 void VertexBuffer::ResizeInternal(int id, BufferData_t buffer, size_t size) const
