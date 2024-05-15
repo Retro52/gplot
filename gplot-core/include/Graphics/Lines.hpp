@@ -33,9 +33,6 @@ namespace gplot::graphics
         {
             m_buffer.Resize<Line>(0, gplot::graphics::VertexBuffer::BufferData_t::eVertexData, vert_size);
             m_buffer.Update<Line>(0, gplot::graphics::VertexBuffer::BufferData_t::eVertexData, vert_size, vert_data);
-
-//            m_buffer.Resize<GLuint>(0, gplot::graphics::VertexBuffer::BufferData_t::eIndicesData, ind_size);
-//            m_buffer.Update<GLuint>(0, gplot::graphics::VertexBuffer::BufferData_t::eIndicesData, ind_size, ind_data);
         }
 
         static VertexBuffer::VertexBufferDescriptor GetDescriptor();

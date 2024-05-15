@@ -26,5 +26,5 @@ vec3 CalculateLightPower(vec3 lightDir, vec3 viewDir, vec3 ambient, vec3 diffuse
 void main()
 {
     vec3 viewDirection = normalize((uCameraPos - vertexPos));
-    FragColor = vec4(CalculateLightPower(uLightDir, viewDirection, uLightCol * uLightInt.x, uLightCol * uLightInt.y, uLightCol * uLightInt.z), 1.0);
+    FragColor = vec4(CalculateLightPower(uLightDir, viewDirection, uLightCol * uLightInt.x, uLightCol * uLightInt.y, uLightCol * uLightInt.z) * vertexColor, 1.0);
 }
