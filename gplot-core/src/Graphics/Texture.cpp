@@ -1,5 +1,7 @@
 #include <Graphics/Texture.hpp>
 
+#include <glad/glad.h>
+
 using namespace gplot::graphics;
 
 Texture::Texture(texsize size, const void* pixels) noexcept
@@ -29,7 +31,7 @@ Texture::texsize Texture::GetSize() const
     return m_size;
 }
 
-GLuint Texture::GetTextureId() const noexcept
+unsigned int Texture::GetTextureId() const noexcept
 {
     return m_texture;
 }

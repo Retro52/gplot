@@ -1,5 +1,8 @@
 #pragma once
 
+#include <Graphics/Texture.hpp>
+
+#include <memory>
 #include <glad/include/glad/glad.h>
 
 namespace gplot::graphics
@@ -14,9 +17,13 @@ namespace gplot::graphics
 
         void Bind() const;
 
-        void SetTexture(GLuint texture);
+        int GetWidth() const;
 
-        [[nodiscard]] GLuint GetColorTexture() const noexcept;
+        int GetHeight() const;
+
+        void SetTexture(const std::shared_ptr<Texture>& texture);
+
+        [[nodiscard]] std::shared_ptr<Texture> GetColorTexture() const noexcept;
 
         static void Reset() noexcept;
 
@@ -24,8 +31,13 @@ namespace gplot::graphics
 
     private:
 
+        void GenerateRenderBufferDepthAttachment(int width, int height);
+
+    private:
+
         GLuint m_id { 0 };
-        GLuint m_color_texture { 0 };
+        GLuint m_rbo { 0 };
+        std::shared_ptr<Texture> m_texture;
 
         inline static GLuint s_default_fbo_id;
 

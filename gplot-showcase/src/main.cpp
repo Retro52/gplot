@@ -1,19 +1,20 @@
+#include <glad/glad.h>
+
+#include <Core/Window.hpp>
 #include <Core/Camera.hpp>
 #include <Core/DriveIO.hpp>
+#include <Core/EventsHandler.hpp>
 
 #include <Graphics/FBO.hpp>
+#include <Graphics/Mesh.hpp>
 #include <Graphics/Shader.hpp>
 #include <Graphics/Texture.hpp>
-#include <Graphics/VertexBuffer.hpp>
 
-#include <SDL.h>
-#include <SDL_main.h>
-#include <glad/glad.h>
 #include <glm/gtc/type_ptr.hpp>
 
-#include <imgui/include/imgui.h>
-#include <imgui/include/imgui_impl_sdl2.h>
-#include <imgui/include/imgui_impl_opengl3.h>
+#include <imgui/imgui.h>
+#include <imgui/backends/imgui_impl_glfw.h>
+#include <imgui/backends/imgui_impl_opengl3.h>
 
 #include <memory>
 #include <random>
@@ -21,52 +22,87 @@
 #include <iostream>
 
 #include <chrono>
+#include <vector>
+#include <cmath>
+#include <cstdlib> // for rand()
+#include <glm/glm.hpp>
 
-struct Vertex
+std::tuple<std::vector<gplot::graphics::Vertex>, std::vector<GLushort>> GenerateSurface(int numPointsX, int numPointsY, float xRange, float yRange)
 {
-    glm::vec3 pos;
-    glm::vec3 color;
-};
+    std::vector<gplot::graphics::Vertex> vertices;
+    std::vector<GLushort> indices;
+
+    float xStep = xRange / (numPointsX - 1);
+    float yStep = yRange / (numPointsY - 1);
+
+    for (int i = 0; i < numPointsY; ++i)
+    {
+        for (int j = 0; j < numPointsX; ++j)
+        {
+            float x = -xRange / 2.0f + j * xStep;
+            float z = -yRange / 2.0f + i * yStep;
+            float y = std::sin(x) * std::cos(z);
+
+            // Random color
+            float r = static_cast<float>(rand()) / RAND_MAX;
+            float g = static_cast<float>(rand()) / RAND_MAX;
+            float b = static_cast<float>(rand()) / RAND_MAX;
+
+            vertices.push_back({ glm::vec3(x, y, z), glm::vec3(r, g, b) });
+
+            // Create indices for the surface grid
+            if (i < numPointsY - 1 && j < numPointsX - 1)
+            {
+                int topLeft = i * numPointsX + j;
+                int topRight = topLeft + 1;
+                int bottomLeft = topLeft + numPointsX;
+                int bottomRight = bottomLeft + 1;
+
+                indices.push_back(topLeft);
+                indices.push_back(bottomLeft);
+                indices.push_back(topRight);
+
+                indices.push_back(topRight);
+                indices.push_back(bottomLeft);
+                indices.push_back(bottomRight);
+            }
+        }
+    }
+
+    return { vertices, indices };
+}
 
 int main(int argc, char* argv[])
 {
-    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_TIMER);
-    const auto window = SDL_CreateWindow("SomeWindow", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 400, 400, SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
-    const auto context = SDL_GL_CreateContext(window);
-    gladLoadGLLoader(SDL_GL_GetProcAddress);
+    std::shared_ptr<gplot::core::Window> window = std::make_shared<gplot::core::Window>(1200, 800, "Some window");
+    gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 
-    SDL_GL_MakeCurrent(window, context);
+    gplot::core::EventsHandler::Initialize(window);
 
-//    IMGUI_CHECKVERSION();
-//    ImGui::CreateContext();
-//    ImGuiIO& io = ImGui::GetIO(); (void)io;
-//    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-//    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-//    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // Enable Docking
-//    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;       // Enable Multi-Viewport / Platform Windows
-//    //io.ConfigViewportsNoAutoMerge = true;
-//    //io.ConfigViewportsNoTaskBarIcon = true;
-//
-//    // Setup Dear ImGui style
-//    ImGui::StyleColorsDark();
-//
-//    // When viewports are enabled we tweak WindowRounding/WindowBg so platform windows can look identical to regular ones.
-//    ImGuiStyle& style = ImGui::GetStyle();
-//    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-//    {
-//        style.WindowRounding = 0.0f;
-//        style.Colors[ImGuiCol_WindowBg].w = 1.0f;
-//    }
-//
-//    // Setup Platform/Renderer backends
-//    ImGui_ImplSDL2_InitForOpenGL(window, context);
-//    ImGui_ImplOpenGL3_Init();
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // Enable Docking
+    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;       // Enable Multi-Viewport / Platform Windows
+    //io.ConfigViewportsNoAutoMerge = true;
+    //io.ConfigViewportsNoTaskBarIcon = true;
 
-    int width, height;
-    SDL_GetWindowSize(window, &width, &height);
+    // Setup Dear ImGui style
+    ImGui::StyleColorsDark();
 
-    glViewport(0, 0, width, height);
-    SDL_GL_SetSwapInterval(0);
+    // When viewports are enabled we tweak WindowRounding/WindowBg so platform windows can look identical to regular ones.
+    ImGuiStyle& style = ImGui::GetStyle();
+    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+    {
+        style.WindowRounding = 0.0f;
+        style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+    }
+
+    // Setup Platform/Renderer backends
+    ImGui_ImplGlfw_InitForOpenGL(window->GetNative(), true);
+    ImGui_ImplOpenGL3_Init();
 
     glEnable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
@@ -81,200 +117,162 @@ int main(int argc, char* argv[])
 
     gplot::core::Camera camera(glm::radians(45.0F));
 
-    gplot::graphics::VertexBuffer::VertexBufferDescriptor descriptor;
-    gplot::graphics::VertexBuffer::GeometryBufferDescriptor vertex_buffer;
 
-    vertex_buffer.buffers.emplace(gplot::graphics::VertexBuffer::BufferData_t::eVertexData);
-    vertex_buffer.attributes.resize(2);
+//    constexpr std::array<gplot::graphics::Vertex, 8> vertices =
+//        {
+//            gplot::graphics::Vertex{{ -1.0, -1.0,  1.0 }, { 1.0F, 0.0F, 0.0F }},
+//            gplot::graphics::Vertex{{ 1.0, -1.0,  1.0 }, { 0.0F, 1.0F, 0.0F }},
+//            gplot::graphics::Vertex{{ -1.0,  1.0,  1.0 }, { 0.0F, 0.0F, 1.0F }},
+//            gplot::graphics::Vertex{{ 1.0,  1.0,  1.0 }, { 0.0F, 0.0F, 1.0F }},
+//            gplot::graphics::Vertex{{ -1.0, -1.0, -1.0 }, { 1.0F, 1.0F, 0.0F }},
+//            gplot::graphics::Vertex{{ 1.0, -1.0, -1.0 }, { 1.0F, 0.0F, 0.0F }},
+//            gplot::graphics::Vertex{{ -1.0,  1.0, -1.0 }, { 1.0F, 0.0F, 1.0F }},
+//            gplot::graphics::Vertex{{ 1.0,  1.0, -1.0 }, { 0.0F, 1.0F, 1.0F }},
+//        };
+//
+//    constexpr std::array<GLushort, 14> indices =
+//        {
+//            0, 1, 2, 3, 7, 1, 5, 4, 7, 6, 2, 4, 0, 1
+//        };
+//    gplot::graphics::Mesh mesh(vertices, indices);
 
-    vertex_buffer.attributes[0].data_count = 3;
-    vertex_buffer.attributes[0].is_data_normalized = false;
-    vertex_buffer.attributes[0].data = gplot::graphics::VertexBuffer::DataType_t::eFloat32;
 
-    vertex_buffer.attributes[1].data_count = 3;
-    vertex_buffer.attributes[1].is_data_normalized = false;
-    vertex_buffer.attributes[1].data = gplot::graphics::VertexBuffer::DataType_t::eFloat32;
+    constexpr int numPointsX = 50; // Number of points along the x-axis
+    constexpr int numPointsY = 50; // Number of points along the y-axis
+    constexpr float xRange = 10.0f; // Range of x values
+    constexpr float yRange = 10.0f; // Range of y values
 
-    descriptor.geometry_buffers.push_back(vertex_buffer);
+    auto [vertices, indices] = GenerateSurface(numPointsX, numPointsY, xRange, yRange);
+    gplot::graphics::Mesh mesh(vertices, indices);
 
-    gplot::graphics::VertexBuffer buffer(descriptor);
-
-    constexpr std::array<Vertex, 36> vertices =
-    {
-        // Front face
-        Vertex{glm::vec3(-0.5F, -0.5F,  0.5F), glm::vec3(1.0F, 0.0F, 0.0F)},
-        Vertex{glm::vec3( 0.5F, -0.5F,  0.5F), glm::vec3(0.0F, 1.0F, 0.0F)},
-        Vertex{glm::vec3( 0.5F,  0.5F,  0.5F), glm::vec3(0.0F, 0.0F, 1.0F)},
-        Vertex{glm::vec3( 0.5F,  0.5F,  0.5F), glm::vec3(0.0F, 0.0F, 1.0F)},
-        Vertex{glm::vec3(-0.5F,  0.5F,  0.5F), glm::vec3(1.0F, 1.0F, 0.0F)},
-        Vertex{glm::vec3(-0.5F, -0.5F,  0.5F), glm::vec3(1.0F, 0.0F, 0.0F)},
-
-        // Back face
-        Vertex{glm::vec3(-0.5F, -0.5F, -0.5F), glm::vec3(1.0F, 0.0F, 1.0F)},
-        Vertex{glm::vec3( 0.5F, -0.5F, -0.5F), glm::vec3(0.0F, 1.0F, 1.0F)},
-        Vertex{glm::vec3( 0.5F,  0.5F, -0.5F), glm::vec3(1.0F, 1.0F, 1.0F)},
-        Vertex{glm::vec3( 0.5F,  0.5F, -0.5F), glm::vec3(1.0F, 1.0F, 1.0F)},
-        Vertex{glm::vec3(-0.5F,  0.5F, -0.5F), glm::vec3(0.5F, 0.5F, 0.5F)},
-        Vertex{glm::vec3(-0.5F, -0.5F, -0.5F), glm::vec3(1.0F, 0.0F, 1.0F)},
-
-        // Left face
-        Vertex{glm::vec3(-0.5F,  0.5F,  0.5F), glm::vec3(0.0F, 1.0F, 1.0F)},
-        Vertex{glm::vec3(-0.5F,  0.5F, -0.5F), glm::vec3(0.0F, 1.0F, 0.0F)},
-        Vertex{glm::vec3(-0.5F, -0.5F, -0.5F), glm::vec3(1.0F, 0.0F, 0.0F)},
-        Vertex{glm::vec3(-0.5F, -0.5F, -0.5F), glm::vec3(1.0F, 0.0F, 0.0F)},
-        Vertex{glm::vec3(-0.5F, -0.5F,  0.5F), glm::vec3(0.0F, 0.0F, 1.0F)},
-        Vertex{glm::vec3(-0.5F,  0.5F,  0.5F), glm::vec3(0.0F, 1.0F, 1.0F)},
-
-        // Right face
-        Vertex{glm::vec3(0.5F,  0.5F,  0.5F), glm::vec3(1.0F, 0.0F, 0.0F)},
-        Vertex{glm::vec3(0.5F,  0.5F, -0.5F), glm::vec3(0.0F, 1.0F, 0.0F)},
-        Vertex{glm::vec3(0.5F, -0.5F, -0.5F), glm::vec3(0.0F, 0.0F, 1.0F)},
-        Vertex{glm::vec3(0.5F, -0.5F, -0.5F), glm::vec3(0.0F, 0.0F, 1.0F)},
-        Vertex{glm::vec3(0.5F, -0.5F,  0.5F), glm::vec3(1.0F, 1.0F, 0.0F)},
-        Vertex{glm::vec3(0.5F,  0.5F,  0.5F), glm::vec3(1.0F, 0.0F, 0.0F)},
-
-        // Top face
-        Vertex{glm::vec3(-0.5F,  0.5F, -0.5F), glm::vec3(1.0F, 0.0F, 1.0F)},
-        Vertex{glm::vec3( 0.5F,  0.5F, -0.5F), glm::vec3(0.5F, 0.5F, 0.5F)},
-        Vertex{glm::vec3( 0.5F,  0.5F,  0.5F), glm::vec3(0.0F, 1.0F, 1.0F)},
-        Vertex{glm::vec3( 0.5F,  0.5F,  0.5F), glm::vec3(0.0F, 1.0F, 1.0F)},
-        Vertex{glm::vec3(-0.5F,  0.5F,  0.5F), glm::vec3(1.0F, 1.0F, 1.0F)},
-        Vertex{glm::vec3(-0.5F,  0.5F, -0.5F), glm::vec3(1.0F, 0.0F, 1.0F)},
-
-        // Bottom face
-        Vertex{glm::vec3(-0.5F, -0.5F, -0.5F), glm::vec3(0.5F, 0.5F, 0.5F)},
-        Vertex{glm::vec3( 0.5F, -0.5F, -0.5F), glm::vec3(1.0F, 0.0F, 0.0F)},
-        Vertex{glm::vec3( 0.5F, -0.5F,  0.5F), glm::vec3(0.0F, 1.0F, 0.0F)},
-        Vertex{glm::vec3( 0.5F, -0.5F,  0.5F), glm::vec3(0.0F, 1.0F, 0.0F)},
-        Vertex{glm::vec3(-0.5F, -0.5F,  0.5F), glm::vec3(1.0F, 0.0F, 1.0F)},
-        Vertex{glm::vec3(-0.5F, -0.5F, -0.5F), glm::vec3(0.5F, 0.5F, 0.5F)}
-    };
-
-    buffer.Resize<Vertex>(0, gplot::graphics::VertexBuffer::BufferData_t::eVertexData,vertices.size());
-    buffer.Update<Vertex>(0, gplot::graphics::VertexBuffer::BufferData_t::eVertexData,vertices.size(), vertices.data());
-
-    bool end = false;
-    float camera_speed = 10.0f;
-    float camera_rot_speed = 100.0f;
-    bool rightMouseButtonPressed = false;
+    float camera_speed_base = 10.0f;
+    float mouse_sensitivity = 100'000.0f;
     glm::vec3 cameraRotation(0.0f, 0.0F, 0.0f);
 
-    auto last_time = std::chrono::high_resolution_clock::now();
-    while (!end)
+    gplot::graphics::FBO framebuffer;
+    framebuffer.SetTexture(std::make_shared<gplot::graphics::Texture>(gplot::graphics::Texture::texsize(window->GetWidth(), window->GetHeight())));
+
+    int width = window->GetWidth();
+    int height = window->GetHeight();
+
+    using namespace gplot::core;
+    while (!window->IsShouldClose())
     {
-        auto now = std::chrono::high_resolution_clock::now();
-        float delta = std::chrono::duration<float>(now - last_time).count();
-        last_time = now;
+        gplot::core::EventsHandler::PullEvents();
+        const auto dt = gplot::core::EventsHandler::world_dt;
 
-        SDL_Event event;
-        const Uint8* state = SDL_GetKeyboardState(nullptr);
-
-        while(SDL_PollEvent(&event))
+        /* PerspectiveCamera world orientation */
+        if (gplot::core::EventsHandler::isCursorLocked)
         {
-//            ImGui_ImplSDL2_ProcessEvent(&event);
-
-            switch (event.type)
-            {
-                case SDL_WINDOWEVENT:
-                    if (event.window.event == SDL_WINDOWEVENT_CLOSE)
-                    {
-                        end = true;
-                    }
-                    else if (event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
-                    {
-                        SDL_GetWindowSize(window, &width, &height);
-                        glViewport(0, 0, width, height);
-                        camera.m_aspect_ratio = glm::vec2(width, height);
-                    }
-                    break;
-                case SDL_MOUSEMOTION:
-                    if (rightMouseButtonPressed)
-                    {
-                        cameraRotation.y -= event.motion.xrel * delta * camera_rot_speed;
-                        cameraRotation.x -= event.motion.yrel * delta * camera_rot_speed;
-                        camera.SetRotation(cameraRotation);
-                    }
-                    break;
-                case SDL_MOUSEBUTTONDOWN:
-                    if (event.button.button == SDL_BUTTON_RIGHT)
-                    {
-                        rightMouseButtonPressed = true;
-                        SDL_ShowCursor(SDL_DISABLE); // Hide cursor
-                        SDL_SetRelativeMouseMode(SDL_TRUE);
-                    }
-                    break;
-                case SDL_MOUSEBUTTONUP:
-                    if (event.button.button == SDL_BUTTON_RIGHT)
-                    {
-                        rightMouseButtonPressed = false;
-                        SDL_ShowCursor(SDL_ENABLE); // Show cursor
-                        SDL_SetRelativeMouseMode(SDL_FALSE);
-                        SDL_WarpMouseInWindow(window, width/2, height/2);
-                    }
-                    break;
-            }
+            cameraRotation.x = glm::clamp(static_cast<float>(cameraRotation.x - gplot::core::EventsHandler::mouse_dy * gplot::core::EventsHandler::world_dt * mouse_sensitivity / window->GetHeight()),- 89.0f,89.0f);
+            cameraRotation.y += static_cast<float>(- gplot::core::EventsHandler::mouse_dx * gplot::core::EventsHandler::world_dt * mouse_sensitivity / window->GetWidth());
+            camera.SetRotation(cameraRotation);
         }
 
-        if (state[SDL_SCANCODE_W])
-            camera.m_pos += camera_speed * camera.GetFrontVector() * delta;
-        if (state[SDL_SCANCODE_S])
-            camera.m_pos -= camera_speed * camera.GetFrontVector() * delta;
-        if (state[SDL_SCANCODE_A])
-            camera.m_pos -= camera.GetRightVector() * camera_speed * delta;
-        if (state[SDL_SCANCODE_D])
-            camera.m_pos += camera.GetRightVector() * camera_speed * delta;
-        if (state[SDL_SCANCODE_Q])
-            camera.m_pos += camera.GetUpVector() * camera_speed * delta;
-        if (state[SDL_SCANCODE_E])
-            camera.m_pos -= camera.GetUpVector() * camera_speed * delta;
+        float camera_speed = camera_speed_base;
+        if (EventsHandler::IsPressed(Key::LeftShift))
+        {
+            camera_speed *= 10;
+        }
+        else if (EventsHandler::IsPressed(Key::LeftControl))
+        {
+            camera_speed /= 10;
+        }
 
-//        ImGui_ImplOpenGL3_NewFrame();
-//        ImGui_ImplSDL2_NewFrame();
-//        ImGui::NewFrame();
-//        ImGui::DockSpaceOverViewport();
+        if (EventsHandler::IsPressed(Key::W))
+        {
+            camera.m_pos += static_cast<float>(dt) * camera_speed * camera.GetFrontVector();
+        }
+        if (EventsHandler::IsPressed(Key::S))
+        {
+            camera.m_pos -= static_cast<float>(dt) * camera_speed * camera.GetFrontVector();
+        }
+        if (EventsHandler::IsPressed(Key::D) && !EventsHandler::IsPressed(Key::LeftAlt))
+        {
+            camera.m_pos += static_cast<float>(dt) * camera_speed * camera.GetRightVector();
+        }
+        if (EventsHandler::IsPressed(Key::A))
+        {
+            camera.m_pos -= static_cast<float>(dt) * camera_speed * camera.GetRightVector();
+        }
+        if (EventsHandler::IsPressed(Key::Q))
+        {
+            camera.m_pos += static_cast<float>(dt) * camera_speed * camera.GetUpVector();
+        }
+        if (EventsHandler::IsPressed(Key::E))
+        {
+            camera.m_pos -= static_cast<float>(dt) * camera_speed * camera.GetUpVector();
+        }
 
+        camera.m_aspect_ratio = { window->GetWidth(), window->GetHeight() };
+
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+        ImGui::DockSpaceOverViewport();
+
+        if (width != framebuffer.GetWidth() || height != framebuffer.GetHeight())
+        {
+            framebuffer.SetTexture(std::make_shared<gplot::graphics::Texture>(gplot::graphics::Texture::texsize(width, height)));
+        }
+
+        framebuffer.Bind();
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        camera.m_aspect_ratio = { framebuffer.GetWidth(), framebuffer.GetHeight() };
+        glViewport(0, 0, framebuffer.GetWidth(), framebuffer.GetHeight());
 
         shader.Use();
         shader.Set("view", camera.GetView());
         shader.Set("projection", camera.GetProjection());
 
-        buffer.Bind();
+        mesh.Draw();
 
-        glDrawArrays(GL_TRIANGLES, 0, vertices.size());
+        gplot::graphics::FBO::Reset();
+        bool vsync = window->GetVSync();
 
-//        ImGui::Begin("Test");
-//        ImGui::DragFloat("Far Z", &camera.m_far_z);
-//        ImGui::DragFloat("Near Z", &camera.m_near_z);
-//
-//        ImGui::DragFloat("Move speed", &camera_speed);
-//        ImGui::DragFloat("Rotation speed", &camera_rot_speed);
-//
-//        ImGui::DragFloat2("Aspect ratio", glm::value_ptr(camera.m_aspect_ratio));
-//        ImGui::DragFloat3("Camera position", glm::value_ptr(camera.m_pos));
-//        if (ImGui::DragFloat3("Camera rotation", glm::value_ptr(cameraRotation)))
-//        {
-//            camera.SetRotation(cameraRotation);
-//        }
-//
-//        ImGui::End();
-//
-//        ImGui::Render();
-//        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-//
-//        // Update and Render additional Platform Windows
-//        // (Platform functions may change the current OpenGL context, so we save/restore it to make it easier to paste this code elsewhere.
-//        //  For this specific demo app we could also call SDL_GL_MakeCurrent(window, gl_context) directly)
-//        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-//        {
-//            SDL_Window* backup_current_window = SDL_GL_GetCurrentWindow();
-//            SDL_GLContext backup_current_context = SDL_GL_GetCurrentContext();
-//            ImGui::UpdatePlatformWindows();
-//            ImGui::RenderPlatformWindowsDefault();
-//            SDL_GL_MakeCurrent(backup_current_window, backup_current_context);
-//        }
+        ImGui::Begin("Test");
+        ImGui::DragFloat("Far Z", &camera.m_far_z);
+        ImGui::DragFloat("Near Z", &camera.m_near_z, 0.001F);
 
-        SDL_GL_SwapWindow(window);
+        ImGui::DragFloat("Move speed", &camera_speed_base);
+        ImGui::DragFloat("Mouse sensitivity", &mouse_sensitivity);
+
+        ImGui::DragFloat2("Aspect ratio", glm::value_ptr(camera.m_aspect_ratio));
+        ImGui::DragFloat3("Camera position", glm::value_ptr(camera.m_pos));
+        if (ImGui::DragFloat3("Camera rotation", glm::value_ptr(cameraRotation)))
+        {
+            camera.SetRotation(cameraRotation);
+        }
+
+        if (ImGui::Checkbox("Enable vsync", &vsync))
+        {
+            window->SetVSync(vsync);
+        }
+
+        ImGui::End();
+
+        ImGui::Begin("Viewport");
+
+        const auto img_size = ImGui::GetContentRegionAvail();
+        ImGui::Image(reinterpret_cast<void*>(framebuffer.GetColorTexture()->GetTextureId()), img_size, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
+
+        width = static_cast<int>(img_size.x);
+        height = static_cast<int>(img_size.y);
+
+        ImGui::End();
+
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+        if(io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+        {
+            GLFWwindow * backup = glfwGetCurrentContext();
+            ImGui::UpdatePlatformWindows();
+            ImGui::RenderPlatformWindowsDefault();
+            glfwMakeContextCurrent(backup);
+        }
+
+        window->SwapBuffers();
     }
 
     return 0;

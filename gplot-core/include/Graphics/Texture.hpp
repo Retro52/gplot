@@ -1,7 +1,6 @@
 #pragma once
 
 #include <glm/glm.hpp>
-#include <glad/glad.h>
 
 namespace gplot::graphics
 {
@@ -24,11 +23,11 @@ namespace gplot::graphics
 
         [[nodiscard]] texsize GetSize() const;
 
-        [[nodiscard]] GLuint GetTextureId() const noexcept;
+        [[nodiscard]] unsigned int GetTextureId() const noexcept;
 
     private:
 
         texsize m_size;
-        GLuint m_texture { 0 };
+        unsigned int m_texture { 0 };
     };
 }

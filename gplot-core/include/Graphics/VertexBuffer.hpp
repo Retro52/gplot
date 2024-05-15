@@ -5,7 +5,7 @@
 #include <variant>
 #include <unordered_set>
 
-#include <glad/glad.h>
+#include <glad/include/glad/glad.h>
 
 namespace gplot::graphics
 {
@@ -48,8 +48,8 @@ namespace gplot::graphics
 
         struct DataBuffer
         {
-            GLuint VBO { 0 };
-            GLuint EBO { 0 };
+            unsigned int VBO { 0 };
+            unsigned int EBO { 0 };
         };
 
     public:
@@ -89,7 +89,7 @@ namespace gplot::graphics
 
     private:
 
-        [[nodiscard]] GLuint GetBufferId(int id, BufferData_t buffer) const;
+        [[nodiscard]] unsigned int GetBufferId(int id, BufferData_t buffer) const;
 
         void ResizeInternal(int id, BufferData_t buffer, size_t size) const;
 
@@ -99,7 +99,7 @@ namespace gplot::graphics
 
     private:
 
-        GLuint m_VAO { 0 };
+        unsigned int m_VAO { 0 };
 
         std::vector<DataBuffer> m_buffers;
     };

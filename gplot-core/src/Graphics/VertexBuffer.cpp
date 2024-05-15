@@ -1,6 +1,8 @@
 #include <Graphics/VertexBuffer.hpp>
 #include <cstdint>
 
+#include <glad/glad.h>
+
 using namespace gplot::graphics;
 
 namespace
@@ -159,7 +161,7 @@ void VertexBuffer::UnmapBuffer(int id, BufferData_t buffer) const
     glUnmapBuffer(type);
 }
 
-GLuint VertexBuffer::GetBufferId(int id, BufferData_t buffer) const
+unsigned int VertexBuffer::GetBufferId(int id, BufferData_t buffer) const
 {
     switch (buffer)
     {
