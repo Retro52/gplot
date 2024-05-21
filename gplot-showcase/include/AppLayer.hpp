@@ -49,7 +49,13 @@ namespace gplot
 
         std::unique_ptr<gplot::graphics::Lines> m_grid;
 
-        std::vector<std::unique_ptr<gplot::graphics::Mesh>> m_meshes;
+        struct MeshEntry
+        {
+            std::string name;
+            std::unique_ptr<gplot::graphics::Mesh> mesh;
+        };
+
+        std::vector<MeshEntry> m_meshes;
 
     };
 }

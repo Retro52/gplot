@@ -1,20 +1,23 @@
 #pragma once
 
+#include <Graphics/RenderTypes.hpp>
+
 #include <tuple>
 #include <vector>
 #include <fstream>
 #include <sstream>
-#include <Graphics/RenderTypes.hpp>
 
-#include <glm/glm.hpp>
 #include <glad/glad.h>
 
 namespace gplot
 {
-    std::tuple<std::vector<gplot::graphics::Vertex>, std::vector<GLuint>> GenerateSurface(int numPointsX, int numPointsY, float xRange, float yRange, const std::vector<float>& heights, bool randomColor = true)
+    std::tuple<std::vector<gplot::graphics::Vertex>, std::vector<GLuint>> GenerateSurface(int numPointsX, int numPointsY, float xRange, float yRange, const std::vector<float>& heights, glm::vec3 color)
     {
         std::vector<gplot::graphics::Vertex> vertices;
         std::vector<GLuint> indices;
+
+        indices.reserve(numPointsX * numPointsY + 1);
+        vertices.reserve(numPointsX * numPointsY + 1);
 
         float xStep = xRange / (numPointsX - 1);
         float yStep = yRange / (numPointsY - 1);
@@ -28,12 +31,7 @@ namespace gplot
                 float z = -yRange / 2.0f + i * yStep;
                 float y = heights[i * numPointsY + j];
 
-                // Random color
-                float r = randomColor ? static_cast<float>(rand()) / RAND_MAX : 1.0F;
-                float g = randomColor ? static_cast<float>(rand()) / RAND_MAX : 1.0F;
-                float b = randomColor ? static_cast<float>(rand()) / RAND_MAX : 1.0F;
-
-                vertices.push_back({ glm::vec3(x, y, z), glm::vec3(0.0f), glm::vec3(r, g, b) });
+                vertices.push_back({ glm::vec3(x, y, z), glm::vec3(0.0f), color });
             }
         }
 
@@ -90,19 +88,28 @@ namespace gplot
         if (!file.is_open())
             return false;
 
-        std::string line;
-        while (std::getline(file, line))
+        try
         {
-            std::stringstream ss(line);
-            std::string value;
-            while (std::getline(ss, value, ','))
+            std::string line;
+            while (std::getline(file, line))
             {
-                heights.push_back(std::stof(value));
+                std::stringstream ss(line);
+                std::string value;
+                while (std::getline(ss, value, ','))
+                {
+                    heights.push_back(std::stof(value));
+                }
             }
         }
+        catch (std::exception& e)
+        {
+            return false;
+        }
 
-//        numPointsY = std::count(line.begin(), line.end(), '\n') + 1;
-//        numPointsX = heights.size() / numPointsY;
+        if (heights.size() < numPointsY * numPointsX)
+        {
+            return false;
+        }
 
         return true;
     }

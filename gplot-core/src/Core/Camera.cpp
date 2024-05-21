@@ -38,6 +38,5 @@ void Camera::SetRotation(const glm::vec3& rotation)
 
 [[nodiscard]] glm::mat4 Camera::GetProjection() const
 {
-//    return glm::perspective(m_fov, m_aspect_ratio.x / m_aspect_ratio.y, m_near_z, m_far_z);
-    return glm::infinitePerspective(m_fov, m_aspect_ratio.x / m_aspect_ratio.y, m_near_z);
+    return glm::perspective(m_fov, m_aspect_ratio.x / m_aspect_ratio.y, m_near_z, m_far_z);
 }

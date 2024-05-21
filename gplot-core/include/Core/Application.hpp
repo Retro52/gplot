@@ -1,8 +1,9 @@
 #pragma once
 
+#include <Core/Layer.hpp>
+
 #include <vector>
 #include <memory>
-#include <Core/Layer.hpp>
 
 namespace gplot::core
 {

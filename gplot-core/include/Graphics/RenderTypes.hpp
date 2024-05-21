@@ -4,13 +4,6 @@
 
 namespace gplot::graphics
 {
-    enum class Primitive
-    {
-        eLines,
-        eLinesStrip,
-        eLinesStripAdjacent,
-    };
-
     struct Vertex
     {
         glm::vec3 position;

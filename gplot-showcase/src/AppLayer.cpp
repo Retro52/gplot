@@ -9,10 +9,10 @@
 #include <imgui/imgui.h>
 #include <imgui/backends/imgui_impl_glfw.h>
 #include <imgui/backends/imgui_impl_opengl3.h>
+#include <imgui/FileBrowser/ImGuiFileBrowser.h>
 
 #include <memory>
 #include <vector>
-#include <cmath>
 #include <cstdlib> // for rand()
 #include <glm/glm.hpp>
 
@@ -81,7 +81,8 @@ void AppLayer::OnDetach()
 
 bool AppLayer::OnUpdate()
 {
-    static bool render_grid = true;
+    static bool render_grid = false;
+    static imgui_addons::ImGuiFileBrowser file_dialog;
     static int width = m_framebuffer->GetWidth(), height = m_framebuffer->GetHeight();
 
     gplot::core::EventsHandler::PullEvents();
@@ -142,21 +143,11 @@ bool AppLayer::OnUpdate()
         m_framebuffer->SetTexture(std::make_shared<gplot::graphics::Texture>(gplot::graphics::Texture::texsize(width, height)));
     }
 
+    m_camera.m_aspect_ratio = { m_framebuffer->GetWidth(), m_framebuffer->GetHeight() };
+
     m_framebuffer->Bind();
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    m_camera.m_aspect_ratio = { m_framebuffer->GetWidth(), m_framebuffer->GetHeight() };
     glViewport(0, 0, m_framebuffer->GetWidth(), m_framebuffer->GetHeight());
-
-    m_surface_shader->Use();
-    m_surface_shader->Set("uView", m_camera.GetView());
-    m_surface_shader->Set("uCameraPos", m_camera.m_pos);
-    m_surface_shader->Set("uProjection", m_camera.GetProjection());
-    m_surface_shader->Set("uLightCol", m_sun.color);
-    m_surface_shader->Set("uLightDir", m_sun.direction);
-    m_surface_shader->Set("uLightInt", glm::vec3(m_sun.ambient, m_sun.diffuse, m_sun.specular));
-
-    for (const auto& mesh : m_meshes)
-        mesh->Draw();
 
     if (render_grid)
     {
@@ -173,6 +164,17 @@ bool AppLayer::OnUpdate()
 
         m_grid->Draw();
     }
+
+    m_surface_shader->Use();
+    m_surface_shader->Set("uView", m_camera.GetView());
+    m_surface_shader->Set("uCameraPos", m_camera.m_pos);
+    m_surface_shader->Set("uProjection", m_camera.GetProjection());
+    m_surface_shader->Set("uLightCol", m_sun.color);
+    m_surface_shader->Set("uLightDir", m_sun.direction);
+    m_surface_shader->Set("uLightInt", glm::vec3(m_sun.ambient, m_sun.diffuse, m_sun.specular));
+
+    for (const auto& mesh : m_meshes)
+        mesh.mesh->Draw();
 
     gplot::graphics::FBO::Reset();
     bool vsync = m_window->GetVSync();
@@ -216,9 +218,9 @@ bool AppLayer::OnUpdate()
     static bool import_popup = false;
     static int dimX = 1000;
     static int dimY = 1000;
-    static char filepath[256] = "";
-    static bool randomColor = false;
+    static std::string filepath;
     static bool importError = false;
+    static glm::vec3 surfColor = glm::vec3(1.0);
 
     if (ImGui::Button("Import Surface"))
     {
@@ -232,18 +234,29 @@ bool AppLayer::OnUpdate()
 
     if (ImGui::BeginPopupModal("Import Surface", NULL, ImGuiWindowFlags_AlwaysAutoResize))
     {
-        ImGui::InputText("Filepath", filepath, IM_ARRAYSIZE(filepath));
+        ImGui::Text("File: %s", filepath.c_str());
+        ImGui::SameLine();
+
+        if (ImGui::Button("..."))
+        {
+            ImGui::OpenPopup("Open File");
+        }
+        if (file_dialog.showFileDialog("Open File", imgui_addons::ImGuiFileBrowser::DialogMode::OPEN, ImVec2(700, 310), ".csv"))
+        {
+            filepath = file_dialog.selected_path;
+        }
+
         ImGui::InputInt("Dimensions X", &dimX);
         ImGui::InputInt("Dimensions Y", &dimY);
-        ImGui::Checkbox("Random Colors", &randomColor);
+        ImGui::ColorEdit3("Surface color", glm::value_ptr(surfColor));
 
         if (ImGui::Button("Import"))
         {
             std::vector<float> heights;
             if (ReadCSV(filepath, heights, dimX, dimY))
             {
-                auto [vertices, indices] = GenerateSurface(dimX, dimY, 100.0f, 100.0f, heights, randomColor);
-                m_meshes.emplace_back(std::make_unique<gplot::graphics::Mesh>(vertices, indices));
+                auto [vertices, indices] = GenerateSurface(dimX, dimY, 100.0f, 100.0f, heights, surfColor);
+                m_meshes.push_back({filepath, std::make_unique<gplot::graphics::Mesh>(vertices, indices)});
                 import_popup = false;
                 importError = false;
                 ImGui::CloseCurrentPopup();
@@ -269,12 +282,36 @@ bool AppLayer::OnUpdate()
         ImGui::EndPopup();
     }
 
-    if (ImGui::Button("Remove Surface"))
+    if (ImGui::BeginTable("Surfaces", 2, ImGuiTableFlags_Borders))
     {
-        if (!m_meshes.empty())
+        ImGui::TableSetupColumn("File");
+        ImGui::TableSetupColumn("Action");
+        ImGui::TableHeadersRow();
+
+        int i = 0;
+        for (auto it = m_meshes.begin(); it != m_meshes.end(); )
         {
-            m_meshes.pop_back();
+            ImGui::PushID(++i);
+            ImGui::TableNextRow();
+
+            ImGui::TableSetColumnIndex(0);
+            ImGui::Text("File: %s", it->name.c_str());
+
+
+            ImGui::TableSetColumnIndex(1);
+            if (ImGui::Button("Remove Surface"))
+            {
+                it = m_meshes.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+
+            ImGui::PopID();
         }
+
+        ImGui::EndTable();
     }
 
     ImGui::End();
@@ -282,7 +319,9 @@ bool AppLayer::OnUpdate()
     ImGui::Begin("Viewport");
 
     const auto img_size = ImGui::GetContentRegionAvail();
-    ImGui::Image(reinterpret_cast<void*>(m_framebuffer->GetColorTexture()->GetTextureId()), img_size, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
+    width = static_cast<int>(img_size.x);
+    height = static_cast<int>(img_size.y);
+    ImGui::Image(reinterpret_cast<void*>(static_cast<size_t>(m_framebuffer->GetColorTexture()->GetTextureId())), img_size, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
 
     ImGui::End();
 

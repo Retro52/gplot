@@ -1,5 +1,4 @@
 #include <Graphics/VertexBuffer.hpp>
-#include <cstdint>
 
 #include <glad/glad.h>
 

@@ -1,8 +1,10 @@
+#pragma once
+
+#include <Core/Window.hpp>
+
 #include <array>
 #include <memory>
-
 #include <GLFW/glfw3.h>
-#include <Core/Window.hpp>
 
 namespace gplot::core
 {

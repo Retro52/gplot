@@ -1,9 +1,9 @@
 #pragma once
 
-#include <string_view>
-#include <unordered_map>
 #include <variant>
 #include <optional>
+#include <string_view>
+#include <unordered_map>
 
 #include <glm/glm.hpp>
 
@@ -34,6 +34,3 @@ namespace gplot::graphics
 
     };
 }
-
-#include <string_view>
-

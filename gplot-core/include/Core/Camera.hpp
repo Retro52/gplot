@@ -1,7 +1,7 @@
 #pragma once
 
-#include <glm/glm.hpp>
 #include <iostream>
+#include <glm/glm.hpp>
 
 namespace gplot::core
 {
@@ -44,7 +44,7 @@ namespace gplot::core
         float m_fov { glm::radians(60.0F) };
 
         float m_near_z { 0.005F };
-        float m_far_z { std::numeric_limits<float>::max() };
+        float m_far_z { 2097152.0F };
 
     private:
 

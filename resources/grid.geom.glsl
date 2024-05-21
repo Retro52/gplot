@@ -14,7 +14,7 @@ void main()
     vec4 p1 = gl_in[1].gl_Position;
 
     // Calculate direction and perpendicular vector
-    vec2 direction = normalize(p1.xy - p0.xy);
+    vec2 direction = normalize(p1.xz - p0.xz);
     vec2 perp = vec2(-direction.y, direction.x);
 
     // Convert line width to NDC (Normalized Device Coordinates)

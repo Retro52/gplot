@@ -1,6 +1,4 @@
 #include <Graphics/FBO.hpp>
-#include <string>
-#include <stdexcept>
 #include <iostream>
 
 using namespace gplot::graphics;

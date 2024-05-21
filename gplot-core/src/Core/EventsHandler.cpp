@@ -1,4 +1,3 @@
-#include <glad/glad.h>
 #include <Core/EventsHandler.hpp>
 
 using namespace gplot::core;
